@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal de Navios</title>
+  <style>
+    :root {
+      --fundo: #f6f7f9; --cartao: #ffffff; --texto: #1c2430; --suave: #5b6675; --borda: #dfe3e8;
+      --destaque: #0b6e99; --destaque-texto: #ffffff; --alerta-fundo: #fff4e0; --alerta-texto: #7a4b00;
+      --erro: #b42318; --ok-fundo: #e7f6ec; --ok-texto: #1a6b37; --demo-fundo: #eef1ff; --demo-texto: #3a3f8f;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fundo: #12161c; --cartao: #1a2029; --texto: #e6e9ee; --suave: #9aa5b4; --borda: #2c3542;
+        --destaque: #3fa3d1; --destaque-texto: #0b1218; --alerta-fundo: #3a2a0c; --alerta-texto: #f5cf8a;
+        --erro: #ff8a7a; --ok-fundo: #12321f; --ok-texto: #8fdcaa; --demo-fundo: #23264a; --demo-texto: #c3c7ff;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fundo); color: var(--texto); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    h2 { font-size: 17px; margin: 0 0 12px; }
+    p.sub { color: var(--suave); margin: 0 0 20px; }
+    section { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+    label { display: flex; flex-direction: column; font-size: 13px; color: var(--suave); gap: 4px; }
+    input, select { font: inherit; padding: 7px 9px; border: 1px solid var(--borda); border-radius: 6px; background: var(--fundo); color: var(--texto); min-width: 0; }
+    button { font: inherit; padding: 8px 14px; border: 0; border-radius: 6px; background: var(--destaque); color: var(--destaque-texto); cursor: pointer; }
+    button.secundario { background: transparent; color: var(--destaque); border: 1px solid var(--borda); }
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; }
+    .pill.ok { background: var(--ok-fundo); color: var(--ok-texto); }
+    .pill.demo { background: var(--demo-fundo); color: var(--demo-texto); }
+    .pill.alerta { background: var(--alerta-fundo); color: var(--alerta-texto); }
+    .tabela { overflow-x: auto; margin-top: 12px; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+    th { color: var(--suave); font-weight: 500; }
+    .erro { color: var(--erro); margin-top: 8px; }
+    .resumo { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+    .resumo div { border: 1px solid var(--borda); border-radius: 8px; padding: 8px 12px; }
+    .resumo strong { display: block; font-size: 20px; }
+    details { margin-top: 10px; }
+    pre { background: var(--fundo); border: 1px solid var(--borda); border-radius: 6px; padding: 10px; overflow: auto; max-height: 420px; font-size: 12px; }
+    .muted { color: var(--suave); font-size: 13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Portal de Navios</h1>
+  <p class="sub">Chegada de navios (Shipxy) combinada com o eTracking dos contêineres (VesselFinder).</p>
+
+  <section>
+    <h2>Fontes de dados</h2>
+    <div id="status" class="muted">Carregando…</div>
+  </section>
+
+  <section>
+    <h2>Previsão de entrada de contêineres</h2>
+    <form id="form-previsao">
+      <label>Porto (UN/LOCODE)<input name="porto" value="BRSSZ" maxlength="5" size="7" required></label>
+      <label>Próximos dias<input name="dias" type="number" min="1" max="30" value="7" required></label>
+      <button type="submit">Consultar</button>
+    </form>
+    <div id="previsao"></div>
+  </section>
+
+  <section>
+    <h2>eTracking de contêiner</h2>
+    <form id="form-rastreio">
+      <label>Número<input name="numero" placeholder="MSCU1234566" maxlength="13" size="14" required></label>
+      <label>Armador (SCAC)<input name="armador" value="AUTO" maxlength="4" size="6"></label>
+      <button type="submit">Consultar sem gravar</button>
+      <button type="button" class="secundario" id="btn-cadastrar">Cadastrar e monitorar</button>
+    </form>
+    <div id="rastreio"></div>
+  </section>
+
+  <section>
+    <h2>Contêineres monitorados</h2>
+    <button type="button" class="secundario" id="btn-lista">Atualizar lista</button>
+    <div id="lista"></div>
+  </section>
+</main>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const esc = (v) => String(v ?? '—').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const data = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
+  const pillFonte = (f) => `<span class="pill ${f === 'demo' ? 'demo' : 'ok'}">${esc(f)}</span>`;
+
+  async function api(caminho, opcoes) {
+    const res = await fetch(caminho, { headers: { 'content-type': 'application/json' }, ...opcoes });
+    const corpo = res.status === 204 ? null : await res.json();
+    if (!res.ok && res.status !== 202) throw new Error(corpo?.erro || `HTTP ${res.status}`);
+    return { status: res.status, corpo };
+  }
+  const erro = (alvo, e) => { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; };
+  const bruto = (obj) => `<details><summary>Ver JSON completo</summary><pre>${esc(JSON.stringify(obj, null, 2))}</pre></details>`;
+
+  async function carregarStatus() {
+    try {
+      const { corpo } = await api('/api/health');
+      const f = corpo.fontes;
+      const linha = (nome, v) => `${nome}: <span class="pill ${v === 'configurada' ? 'ok' : 'demo'}">${esc(v)}</span>`;
+      $('#status').innerHTML = `${linha('Shipxy (navios)', f.shipxy)} &nbsp; ${linha('VesselFinder (eTracking)', f.vesselfinder)} &nbsp; Banco: <span class="pill ok">${esc(corpo.banco)}</span>`;
+    } catch (e) { erro($('#status'), e); }
+  }
+
+  $('#form-previsao').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    const alvo = $('#previsao');
+    alvo.innerHTML = '<p class="muted">Consultando…</p>';
+    try {
+      const { corpo } = await api(`/api/previsao-entrada?porto=${encodeURIComponent(f.get('porto').toUpperCase())}&dias=${f.get('dias')}`);
+      const r = corpo.resumo;
+      const linhas = corpo.navios.map((n) => `<tr>
+          <td>${esc(n.nome)}<div class="muted">MMSI ${esc(n.mmsi)} · IMO ${esc(n.imo)}</div></td>
+          <td>${data(n.eta)}</td>
+          <td>${n.totalConteineres}</td>
+          <td>${n.conteineres.map((c) => `${esc(c.numero)}${c.perigoso ? ' <span class="pill alerta">perigoso</span>' : ''}${c.diferencaHorasParaEtaNavio !== null ? ` <span class="muted">(eTracking ${c.diferencaHorasParaEtaNavio > 0 ? '+' : ''}${c.diferencaHorasParaEtaNavio} h)</span>` : ''}`).join('<br>') || '—'}</td>
+        </tr>`).join('');
+      const divergencias = corpo.divergencias.map((d) => `<li>${esc(d.conteiner)} no ${esc(d.navio)}: navio (AIS) ${data(d.etaNavioAis)} × eTracking ${data(d.etaEtracking)} (${d.diferencaHoras} h)</li>`).join('');
+      alvo.innerHTML = `
+        <div class="resumo">
+          <div><strong>${r.totalNavios}</strong>navios chegando</div>
+          <div><strong>${r.totalConteineresPrevistos}</strong>contêineres monitorados previstos</div>
+          <div><strong>${r.totalDivergencias}</strong>divergências de ETA</div>
+          <div>Fonte navios<br>${pillFonte(corpo.fontes.navios)}</div>
+        </div>
+        ${divergencias ? `<p><span class="pill alerta">Conferir</span></p><ul>${divergencias}</ul>` : ''}
+        <div class="tabela"><table><thead><tr><th>Navio</th><th>ETA (AIS)</th><th>Contêineres</th><th>Números</th></tr></thead><tbody>${linhas || '<tr><td colspan="4">Nenhum navio previsto na janela.</td></tr>'}</tbody></table></div>
+        ${corpo.semNavioNaLista.length ? `<p class="muted">${corpo.semNavioNaLista.length} contêiner(es) com chegada prevista pelo eTracking sem navio correspondente na lista da Shipxy.</p>` : ''}
+        ${bruto(corpo)}`;
+    } catch (e) { erro(alvo, e); }
+  });
+
+  function mostrarRastreio(corpo, status) {
+    const alvo = $('#rastreio');
+    if (status === 202 || corpo.pronto === false || corpo.sincronizado === false && corpo.situacao) {
+      alvo.innerHTML = `<p><span class="pill alerta">Na fila</span> A VesselFinder ainda está processando. Tente de novo em ${esc(corpo.tenteNovamenteEmSegundos)} s.</p>${bruto(corpo)}`;
+      return;
+    }
+    const r = corpo.rastreio || corpo.sincronizacao?.rastreio;
+    if (!r) { alvo.innerHTML = bruto(corpo); return; }
+    const eventos = r.eventos.map((e) => `<tr><td>${data(e.dataHora)}</td><td>${esc(e.evento)}</td><td>${esc(e.porto)} ${e.locode ? `<span class="muted">${esc(e.locode)}</span>` : ''}</td><td>${e.realizado ? 'realizado' : 'previsto'}</td></tr>`).join('');
+    alvo.innerHTML = `
+      <div class="resumo">
+        <div>Contêiner<strong>${esc(r.numero)}</strong></div>
+        <div>Navio<strong>${esc(r.navio?.nome)}</strong></div>
+        <div>ETA destino<strong>${data(r.etaDestino)}</strong></div>
+        <div>Progresso<strong>${esc(r.progresso)}%</strong></div>
+        <div>Fonte<br>${pillFonte(corpo.fonte || corpo.sincronizacao?.fonte)}</div>
+      </div>
+      <p class="muted">${esc(r.origem)} → ${esc(r.destino)} · ${esc(r.localAtual)}</p>
+      <div class="tabela"><table><thead><tr><th>Data</th><th>Evento</th><th>Local</th><th></th></tr></thead><tbody>${eventos}</tbody></table></div>
+      ${bruto(corpo)}`;
+  }
+
+  $('#form-rastreio').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    $('#rastreio').innerHTML = '<p class="muted">Consultando…</p>';
+    try {
+      const { corpo, status } = await api(`/api/conteineres/${encodeURIComponent(f.get('numero'))}/rastreio?armador=${encodeURIComponent(f.get('armador') || 'AUTO')}&incluirBruto=true`);
+      mostrarRastreio(corpo, status);
+    } catch (e) { erro($('#rastreio'), e); }
+  });
+
+  $('#btn-cadastrar').addEventListener('click', async () => {
+    const f = new FormData($('#form-rastreio'));
+    if (!f.get('numero')) { erro($('#rastreio'), new Error('Informe o número do contêiner.')); return; }
+    $('#rastreio').innerHTML = '<p class="muted">Cadastrando…</p>';
+    try {
+      const { corpo } = await api('/api/conteineres', { method: 'POST', body: JSON.stringify({ numero: f.get('numero'), armador: f.get('armador') || 'AUTO' }) });
+      mostrarRastreio(corpo.sincronizacao?.sincronizado ? corpo : { ...corpo, ...corpo.sincronizacao }, 200);
+      carregarLista();
+    } catch (e) { erro($('#rastreio'), e); }
+  });
+
+  async function carregarLista() {
+    const alvo = $('#lista');
+    try {
+      const { corpo } = await api('/api/conteineres');
+      const linhas = corpo.conteineres.map((c) => `<tr>
+          <td>${esc(c.numero)}${c.perigoso ? ' <span class="pill alerta">perigoso</span>' : ''}</td>
+          <td>${esc(c.armador)}</td><td>${esc(c.navioNome)}</td><td>${data(c.etaEtracking)}</td>
+          <td>${esc(c.situacao)}</td><td>${data(c.ultimoRastreioEm)}</td>
+        </tr>`).join('');
+      alvo.innerHTML = `<div class="tabela"><table><thead><tr><th>Número</th><th>Armador</th><th>Navio</th><th>ETA eTracking</th><th>Situação</th><th>Último rastreio</th></tr></thead><tbody>${linhas || '<tr><td colspan="6">Nenhum contêiner cadastrado.</td></tr>'}</tbody></table></div>`;
+    } catch (e) { erro(alvo, e); }
+  }
+  $('#btn-lista').addEventListener('click', carregarLista);
+
+  carregarStatus();
+  carregarLista();
+</script>
+</body>
+</html>
