@@ -7,13 +7,13 @@ const { ErroApi } = require('../util');
  * para que cada serviço decida o que cada código significa.
  * `rotulo` é o que aparece em mensagens de erro (nunca a URL, que pode conter a chave).
  */
-async function obterJson(url, { timeoutMs, rotulo }) {
+async function obterJson(url, { timeoutMs, rotulo, cabecalhos = {} }) {
   const controle = new AbortController();
   const timer = setTimeout(() => controle.abort(), timeoutMs);
   try {
     const resposta = await fetch(url, {
       signal: controle.signal,
-      headers: { accept: 'application/json' },
+      headers: { accept: 'application/json', ...cabecalhos },
     });
     const texto = await resposta.text();
     let corpo = null;

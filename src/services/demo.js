@@ -88,4 +88,35 @@ function rastreioDemo(numero, armador, porto = 'BRSSZ', navioMmsi = null) {
   };
 }
 
-module.exports = { NAVIOS, CONTEINERES, chegadasDemo, navioPorMmsiDemo, rastreioDemo };
+/** Atracações de demonstração no formato normalizado do DSS (Portal de Navios). */
+function atracacoesDemo() {
+  const agora = agoraArredondado();
+  const iso = (horas) => new Date(agora + horas * HORA).toISOString();
+  return NAVIOS.map((n, i) => {
+    // O último navio tem previsão no DSS 30 h depois do ETA pelo AIS, para demonstrar a divergência.
+    const chegada = n.horas + (i === 2 ? 30 : 1);
+    return {
+      navio: n.nome,
+      viagem: `DEMO${String(i + 1).padStart(3, '0')}`,
+      armador: ['MSC', 'MAERSK', 'CMA CGM'][i],
+      terminal: 'btp',
+      situacao: 'previsto',
+      referencia: iso(chegada + 4),
+      datas: {
+        deadline: iso(chegada - 48),
+        prevChegada: iso(chegada),
+        prevAtracacao: iso(chegada + 4),
+        atracacao: null,
+        prevSaida: iso(chegada + 28),
+        prevAberturaGate: iso(chegada - 120),
+        aberturaGate: i === 0 ? iso(chegada - 118) : null,
+        prevLiberacaoDry: iso(chegada + 30),
+        liberacaoDry: null,
+        prevLiberacaoReefer: iso(chegada + 26),
+        liberacaoReefer: null,
+      },
+    };
+  });
+}
+
+module.exports = { NAVIOS, CONTEINERES, chegadasDemo, navioPorMmsiDemo, rastreioDemo, atracacoesDemo };

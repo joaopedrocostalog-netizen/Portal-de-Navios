@@ -60,7 +60,9 @@ test('contêiner cadastrado com o nome do navio entra na previsão', async () =>
 
   const { status, corpo } = await chamar('/api/previsao-entrada?porto=BRSSZ&dias=7');
   assert.equal(status, 200);
-  assert.equal(corpo.fontes.navios, 'shipxy');
+  assert.equal(corpo.fontes.ais, 'shipxy');
+  assert.equal(corpo.fontes.atracacoes, 'não configurado');
+  assert.equal(corpo.navios[0].fonte, 'shipxy');
   assert.equal(corpo.navios[0].nome, 'MSC ANNA');
   assert.equal(corpo.navios[0].totalConteineres, 1);
   assert.equal(corpo.navios[0].conteineres[0].perigoso, true);

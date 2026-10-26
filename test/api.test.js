@@ -65,10 +65,17 @@ test('previsão de entrada liga contêineres aos navios e aponta divergência', 
   assert.equal(corpo.resumo.totalConteineresPrevistos, 4);
   const primeiro = corpo.navios.find((n) => n.nome === 'DEMO ATLANTICO');
   assert.equal(primeiro.totalConteineres, 2);
-  assert.equal(primeiro.conteineres[0].diferencaHorasParaEtaNavio, 2);
+  assert.equal(primeiro.fonte, 'dss', 'o DSS é a lista principal');
+  assert.equal(primeiro.terminal, 'btp');
+  assert.equal(primeiro.mmsi, '710000001', 'MMSI vem do cruzamento com o AIS pelo nome');
+  assert.equal(primeiro.diferencaHorasAisParaDss, -1);
+  assert.equal(primeiro.conteineres[0].diferencaHorasParaEtaNavio, 1);
+  assert.equal(corpo.fontes.atracacoes, 'demo');
+  assert.equal(corpo.resumo.naviosSomenteAis, 0);
   assert.equal(corpo.resumo.totalDivergencias, 1);
-  assert.equal(corpo.divergencias[0].conteiner, 'HLXU8001005');
-  assert.equal(corpo.divergencias[0].diferencaHoras, 30);
+  assert.equal(corpo.divergencias[0].tipo, 'chegada-dss-x-ais');
+  assert.equal(corpo.divergencias[0].navio, 'DEMO PACIFIC BRIDGE');
+  assert.equal(corpo.divergencias[0].diferencaHoras, -30);
 });
 
 test('cadastro, sincronização, consulta e remoção de contêiner', async () => {
@@ -117,6 +124,17 @@ test('rastreio avulso não grava nada', async () => {
   assert.equal(status, 200);
   assert.equal(corpo.pronto, true);
   assert.equal(corpo.rastreio.numero, 'MSCU1234566');
+});
+
+test('atracações do DSS em modo demo, com filtro de terminal', async () => {
+  const { status, corpo } = await chamar('/api/dss/atracacoes');
+  assert.equal(status, 200);
+  assert.equal(corpo.fonte, 'demo');
+  assert.equal(corpo.total, 3);
+  assert.deepEqual(corpo.terminais, ['btp']);
+  assert.ok(corpo.atracacoes[0].datas.prevLiberacaoDry);
+  assert.equal((await chamar('/api/dss/atracacoes?terminal=outro')).corpo.total, 0);
+  assert.equal((await chamar('/api/previsao-entrada?terminal=outro')).corpo.resumo.totalNavios, 0);
 });
 
 test('busca de portos em modo demo e validação', async () => {

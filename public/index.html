@@ -53,7 +53,7 @@
 <body>
 <main>
   <h1>Portal de Navios</h1>
-  <p class="sub">Navios chegando ao porto (Shipxy) e os contêineres que vêm em cada um.</p>
+  <p class="sub">Atracações previstas (DSS), conferidas com a posição real dos navios (Shipxy), e os contêineres que vêm em cada um. Horários no fuso do seu navegador.</p>
 
   <section>
     <h2>Fontes de dados</h2>
@@ -65,6 +65,8 @@
     <form id="form-previsao">
       <label>Porto (código Shipxy)<input name="porto" id="campo-porto" value="BRSSZ" maxlength="5" size="7" required></label>
       <label>Próximos dias<input name="dias" type="number" min="1" max="30" value="7" required></label>
+      <label>Terminal (opcional)<input name="terminal" id="campo-terminal" placeholder="btp" size="8" list="lista-terminais"></label>
+      <datalist id="lista-terminais"></datalist>
       <button type="submit">Consultar</button>
     </form>
     <form id="form-porto">
@@ -103,7 +105,7 @@
   const $ = (s) => document.querySelector(s);
   const esc = (v) => String(v ?? '—').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const data = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
-  const pillFonte = (f) => `<span class="pill ${f === 'demo' ? 'demo' : 'ok'}">${esc(f)}</span>`;
+  const pillFonte = (f) => `<span class="pill ${f === 'demo' ? 'demo' : f === 'dss' || f === 'shipxy' ? 'ok' : 'alerta'}">${esc(f)}</span>`;
 
   async function api(caminho, opcoes) {
     const res = await fetch(caminho, { headers: { 'content-type': 'application/json' }, ...opcoes });
@@ -118,8 +120,8 @@
     try {
       const { corpo } = await api('/api/health');
       const f = corpo.fontes;
-      const linha = (nome, v) => `${nome}: <span class="pill ${v === 'configurada' ? 'ok' : v === 'demo' || /^demo/.test(v) ? 'demo' : 'alerta'}">${esc(v)}</span>`;
-      $('#status').innerHTML = `${linha('Shipxy (navios)', f.shipxy)} &nbsp; ${linha('eTracking', f.etracking)} &nbsp; Banco: <span class="pill ${corpo.banco === 'postgres' ? 'ok' : 'alerta'}">${esc(corpo.banco)}</span>`;
+      const linha = (nome, v) => `${nome}: <span class="pill ${/^configurad/.test(v) ? 'ok' : /^demo/.test(v) ? 'demo' : 'alerta'}">${esc(v)}</span>`;
+      $('#status').innerHTML = `${linha('DSS (atracações)', f.dss)} &nbsp; ${linha('Shipxy (AIS)', f.shipxy)} &nbsp; ${linha('eTracking', f.etracking)} &nbsp; Banco: <span class="pill ${corpo.banco === 'postgres' ? 'ok' : 'alerta'}">${esc(corpo.banco)}</span>`;
       $('#campo-porto').value = corpo.portoPadrao;
     } catch (e) { erro($('#status'), e); }
   }
@@ -147,27 +149,55 @@
     const alvo = $('#previsao');
     alvo.innerHTML = '<p class="muted">Consultando…</p>';
     try {
-      const { corpo } = await api(`/api/previsao-entrada?porto=${encodeURIComponent(f.get('porto').toUpperCase())}&dias=${f.get('dias')}`);
-      naviosAtuais = corpo.navios;
+      const terminal = (f.get('terminal') || '').trim();
+      const { corpo } = await api(`/api/previsao-entrada?porto=${encodeURIComponent(f.get('porto').toUpperCase())}&dias=${f.get('dias')}${terminal ? `&terminal=${encodeURIComponent(terminal)}` : ''}`);
+      naviosAtuais = [...corpo.navios, ...corpo.naviosSomenteAis];
       const r = corpo.resumo;
-      const linhas = corpo.navios.map((n, i) => `<tr>
+      const contsHtml = (n) => n.conteineres.map((c) => `${esc(c.numero)}${c.perigoso ? ' <span class="pill alerta">perigoso</span>' : ''}${c.diferencaHorasParaEtaNavio !== null ? ` <span class="muted">(eTracking ${c.diferencaHorasParaEtaNavio > 0 ? '+' : ''}${c.diferencaHorasParaEtaNavio} h)</span>` : ''}`).join('<br>') || '—';
+      const prevReal = (prev, real) => real ? `${data(real)} <span class="pill ok">feito</span>` : prev ? `${data(prev)} <span class="muted">prev.</span>` : '—';
+      const linhaDss = (n, i) => `<tr>
+          <td>${esc(n.nome)}<div class="muted">v. ${esc(n.viagem)} · ${esc(n.armador)} · ${esc(n.terminal)}</div>${n.situacao === 'atracado' ? '<span class="pill ok">atracado</span>' : ''}</td>
+          <td>${data(n.datas.prevChegada)}</td>
+          <td>${n.ais ? `${data(n.ais.eta)}${n.diferencaHorasAisParaDss !== null ? `<div class="muted">${n.diferencaHorasAisParaDss > 0 ? '+' : ''}${n.diferencaHorasAisParaDss} h</div>` : ''}` : '<span class="muted">sem AIS</span>'}</td>
+          <td>${prevReal(n.datas.prevAtracacao, n.datas.atracacao)}</td>
+          <td>${data(n.datas.deadline)}</td>
+          <td>${prevReal(n.datas.prevAberturaGate, n.datas.aberturaGate)}</td>
+          <td>Dry: ${prevReal(n.datas.prevLiberacaoDry, n.datas.liberacaoDry)}<br>Reefer: ${prevReal(n.datas.prevLiberacaoReefer, n.datas.liberacaoReefer)}</td>
+          <td>${n.totalConteineres ? contsHtml(n) : '—'}</td>
+          <td><button type="button" class="secundario pequeno" data-navio="${i}">Usar navio</button></td>
+        </tr>`;
+      const linhaAis = (n, i) => `<tr>
           <td>${esc(n.nome)}<div class="muted">MMSI ${esc(n.mmsi)} · IMO ${esc(n.imo)}</div></td>
           <td>${data(n.eta)}</td>
-          <td>${n.totalConteineres}</td>
-          <td>${n.conteineres.map((c) => `${esc(c.numero)}${c.perigoso ? ' <span class="pill alerta">perigoso</span>' : ''}${c.diferencaHorasParaEtaNavio !== null ? ` <span class="muted">(eTracking ${c.diferencaHorasParaEtaNavio > 0 ? '+' : ''}${c.diferencaHorasParaEtaNavio} h)</span>` : ''}`).join('<br>') || '—'}</td>
+          <td>${n.totalConteineres ? contsHtml(n) : '—'}</td>
           <td><button type="button" class="secundario pequeno" data-navio="${i}">Usar navio</button></td>
-        </tr>`).join('');
-      const divergencias = corpo.divergencias.map((d) => `<li>${esc(d.conteiner)} no ${esc(d.navio)}: navio (AIS) ${data(d.etaNavioAis)} × eTracking ${data(d.etaEtracking)} (${d.diferencaHoras} h)</li>`).join('');
+        </tr>`;
+      const tabelaDss = (lista, desloc) => `<div class="tabela"><table><thead><tr><th>Navio</th><th>Chegada (DSS)</th><th>ETA AIS</th><th>Atracação</th><th>Deadline</th><th>Abertura gate</th><th>Liberação</th><th>Contêineres</th><th></th></tr></thead><tbody>${lista.map((n, i) => linhaDss(n, i + desloc)).join('') || '<tr><td colspan="9">Nenhuma atracação na janela.</td></tr>'}</tbody></table></div>`;
+      const tabelaAis = (lista, desloc) => `<div class="tabela"><table><thead><tr><th>Navio</th><th>ETA (AIS)</th><th>Contêineres</th><th></th></tr></thead><tbody>${lista.map((n, i) => linhaAis(n, i + desloc)).join('') || '<tr><td colspan="4">Nenhum navio previsto na janela.</td></tr>'}</tbody></table></div>`;
+      const comDss = corpo.fontes.atracacoes === 'dss' || corpo.fontes.atracacoes === 'demo';
+      const principal = comDss ? tabelaDss(corpo.navios, 0) : tabelaAis(corpo.navios, 0);
+      const somenteAis = corpo.naviosSomenteAis.length
+        ? `<details><summary>${corpo.naviosSomenteAis.length} navio(s) chegando ao porto só pelo AIS (fora da lista do DSS)</summary>${tabelaAis(corpo.naviosSomenteAis, corpo.navios.length)}</details>`
+        : '';
+      const terminais = [...new Set(corpo.navios.map((n) => n.terminal).filter(Boolean))];
+      if (terminais.length) $('#lista-terminais').innerHTML = terminais.map((t) => `<option value="${esc(t)}">`).join('');
+      const avisos = corpo.avisos.map((a) => `<li><strong>${esc(a.fonte)}</strong>: ${esc(a.mensagem)}</li>`).join('');
+      const divergencias = corpo.divergencias.map((d) => d.tipo === 'chegada-dss-x-ais'
+        ? `<li>${esc(d.navio)} (v. ${esc(d.viagem)}): DSS ${data(d.chegadaDss)} × AIS ${data(d.etaAis)} (${d.diferencaHoras > 0 ? '+' : ''}${d.diferencaHoras} h)</li>`
+        : `<li>${esc(d.conteiner)} no ${esc(d.navio)}: navio ${data(d.chegadaNavio)} × eTracking ${data(d.etaEtracking)} (${d.diferencaHoras} h)</li>`).join('');
       alvo.innerHTML = `
         <div class="resumo">
-          <div><strong>${r.totalNavios}</strong>navios chegando</div>
+          <div><strong>${r.totalNavios}</strong>navios na janela</div>
           <div><strong>${r.totalConteineresPrevistos}</strong>contêineres monitorados previstos</div>
-          <div><strong>${r.totalDivergencias}</strong>divergências de ETA</div>
-          <div>Fonte navios<br>${pillFonte(corpo.fontes.navios)}</div>
+          <div><strong>${r.totalDivergencias}</strong>divergências de chegada</div>
+          <div>Atracações<br>${pillFonte(corpo.fontes.atracacoes)}</div>
+          <div>AIS<br>${pillFonte(corpo.fontes.ais)}</div>
         </div>
+        ${avisos ? `<p><span class="pill alerta">Fonte com problema</span></p><ul>${avisos}</ul>` : ''}
         ${divergencias ? `<p><span class="pill alerta">Conferir</span></p><ul>${divergencias}</ul>` : ''}
-        <div class="tabela"><table><thead><tr><th>Navio</th><th>ETA (AIS)</th><th>Contêineres</th><th>Números</th><th></th></tr></thead><tbody>${linhas || '<tr><td colspan="5">Nenhum navio previsto na janela.</td></tr>'}</tbody></table></div>
-        ${corpo.semNavioNaLista.length ? `<p class="muted">${corpo.semNavioNaLista.length} contêiner(es) com chegada prevista pelo eTracking sem navio correspondente na lista da Shipxy.</p>` : ''}
+        ${principal}
+        ${somenteAis}
+        ${corpo.semNavioNaLista.length ? `<p class="muted">${corpo.semNavioNaLista.length} contêiner(es) com chegada prevista pelo eTracking sem navio correspondente.</p>` : ''}
         ${bruto(corpo)}`;
     } catch (e) { erro(alvo, e); }
   });

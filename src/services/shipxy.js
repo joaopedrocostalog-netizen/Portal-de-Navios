@@ -17,6 +17,13 @@ function configurada() {
   return Boolean(config.shipxyKey);
 }
 
+/** Sem chave: em modo demonstração devolve true (usar demo); senão avisa que falta a chave. */
+function usarDemo() {
+  if (configurada()) return false;
+  if (config.modoDemo) return true;
+  throw new ErroApi('Shipxy não configurada: defina SHIPXY_API_KEY.', { status: 503, fonte: 'shipxy' });
+}
+
 async function chamar(metodo, parametros) {
   const url = new URL(`${config.shipxyBaseUrl}/${metodo}`);
   url.searchParams.set('key', config.shipxyKey);
@@ -80,7 +87,7 @@ function comoLista(dados) {
 
 /** Posição atual de um navio pelo MMSI. */
 async function buscarNavio(mmsi) {
-  if (!configurada()) return { fonte: 'demo', dados: demo.navioPorMmsiDemo(mmsi), bruto: null };
+  if (usarDemo()) return { fonte: 'demo', dados: demo.navioPorMmsiDemo(mmsi), bruto: null };
   const corpo = await chamar('GetSingleShip', { mmsi });
   const registro = comoLista(corpo.data)[0];
   if (!registro) throw new ErroApi(`Navio com MMSI ${mmsi} não encontrado na Shipxy.`, { status: 404, fonte: 'shipxy' });
@@ -92,7 +99,7 @@ async function chegadasPrevistas(porto, inicio, fim) {
   let fonte = 'shipxy';
   let navios;
   let bruto = null;
-  if (!configurada()) {
+  if (usarDemo()) {
     fonte = 'demo';
     navios = demo.chegadasDemo(porto, inicio, fim);
   } else {
@@ -124,7 +131,7 @@ function normalizarPorto(p) {
  * use o `codigo` devolvido aqui nas outras consultas de porto.
  */
 async function buscarPortos(termo, max = 10) {
-  if (!configurada()) {
+  if (usarDemo()) {
     return { fonte: 'demo', dados: [{ codigo: 'BRSSZ', nome: 'Santos (demo)', nomeChines: null, pais: 'Brazil', codigoPais: 'BR', fusoHorario: '-3' }], bruto: null };
   }
   const corpo = await chamar('SearchPort', { keywords: termo, max });

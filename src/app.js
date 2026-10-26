@@ -10,6 +10,7 @@ const config = require('./config');
 const pacote = require('../package.json');
 const shipxy = require('./services/shipxy');
 const etracking = require('./services/etracking');
+const dss = require('./services/dss');
 const { sincronizar, semBruto } = require('./services/conteineres');
 const { preverEntrada } = require('./services/previsao');
 const {
@@ -102,12 +103,30 @@ function criarApp(store) {
       versao: pacote.version,
       banco: store.tipo,
       fontes: {
-        shipxy: shipxy.configurada() ? 'configurada' : 'demo (defina SHIPXY_API_KEY)',
+        dss: dss.configurado() ? 'configurado' : config.modoDemo ? 'demo (defina DSS_URL)' : 'não configurado (defina DSS_URL)',
+        shipxy: shipxy.configurada() ? 'configurada' : config.modoDemo ? 'demo (defina SHIPXY_API_KEY)' : 'não configurada (defina SHIPXY_API_KEY)',
         etracking: etracking.descricao(),
       },
       portoPadrao: config.portoPadrao,
     },
   }));
+
+  // ------------------------------------------------------------------ DSS (Portal de Navios do TMS)
+  rota('GET', '/api/dss/atracacoes', async ({ query }) => {
+    const r = await dss.atracacoes();
+    const terminal = query.terminal ? String(query.terminal).toLowerCase() : null;
+    const lista = terminal ? r.dados.filter((a) => String(a.terminal || '').toLowerCase() === terminal) : r.dados;
+    return {
+      corpo: {
+        fonte: r.fonte,
+        timezone: 'UTC',
+        total: lista.length,
+        terminais: [...new Set(r.dados.map((a) => a.terminal).filter(Boolean))].sort(),
+        atracacoes: lista,
+        ...(querBruto(query) ? { bruto: r.bruto } : {}),
+      },
+    };
+  });
 
   // ------------------------------------------------------------------ portos
   rota('GET', '/api/portos', async ({ query }) => {
@@ -234,7 +253,8 @@ function criarApp(store) {
   rota('GET', '/api/previsao-entrada', async ({ query }) => {
     const porto = normalizarPorto(query.porto, config.portoPadrao);
     const dias = normalizarDias(query.dias, config.diasPadrao);
-    return { corpo: await preverEntrada(store, { porto, dias, incluirBruto: querBruto(query) }) };
+    const terminal = query.terminal ? String(query.terminal).trim() : undefined;
+    return { corpo: await preverEntrada(store, { porto, dias, terminal, incluirBruto: querBruto(query) }) };
   });
 
   // ------------------------------------------------------------------ despacho

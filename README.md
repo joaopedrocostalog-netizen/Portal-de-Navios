@@ -4,19 +4,22 @@ API que **prevê a entrada de contêineres no porto a partir da chegada dos navi
 
 | Fonte | O que entrega |
 |---|---|
-| [Shipxy](https://apidocs.shipxy.com) (Shipfinder) | Navios com chegada prevista ao porto (ETA pelo AIS), posição de um navio, busca de portos |
+| **DSS (TMS) – Portal de Navios** | Fonte principal. Atracações por terminal: previsão de chegada e atracação, deadline, abertura de gate, liberação de dry e reefer (módulo `tms_integr_portal_navios`) |
+| [Shipxy](https://apidocs.shipxy.com) (Shipfinder) | ETA e posição dos navios pelo AIS, para conferir a previsão do DSS; busca de portos |
 | PostgreSQL (próprio) | Contêineres monitorados: navio em que vêm, carga perigosa, histórico |
 | eTracking | **Nenhuma fonte ligada.** A VesselFinder foi removida por ser paga. Há um ponto de encaixe pronto em `src/services/etracking.js` para ligar outra fonte |
 
-Sem a chave da Shipxy, tudo responde em **modo demonstração** (`"fonte": "demo"`, navios com nome `DEMO …`).
+Sem DSS e sem Shipxy, tudo responde em **modo demonstração** (`"fonte": "demo"`, navios com nome `DEMO …`).
 
 ## Como funciona
 
-1. A Shipxy devolve os navios com chegada prevista ao porto nos próximos dias.
-2. Você cadastra cada contêiner informando **o navio em que ele vem** (nome, MMSI ou IMO).
-3. A previsão junta as duas coisas: para cada navio chegando, quais contêineres monitorados estão nele, agrupados por dia.
+1. O DSS devolve as atracações (todas as datas em UTC; a API devolve em ISO 8601 com `Z`).
+2. A Shipxy devolve os navios com ETA para o porto pelo AIS. Cada atracação do DSS é cruzada com o AIS **pelo nome do navio**, o que traz MMSI, IMO, posição e o ETA real. Se a chegada prevista no DSS e o ETA do AIS diferirem mais que `TOLERANCIA_DIVERGENCIA_HORAS` (24 h), a previsão aponta uma **divergência** para conferir.
+3. Você cadastra cada contêiner informando **o navio em que ele vem** (nome, MMSI ou IMO), e a previsão mostra, para cada atracação, quais contêineres monitorados estão nela, agrupados por dia.
 
-Se no futuro uma fonte de eTracking for ligada, a previsão também compara o ETA do contêiner com o ETA do navio e aponta divergências.
+Entram na janela as atracações previstas entre agora (com 1 dia de tolerância para atrasos) e o fim do período, e os navios atracados que ainda não têm saída prevista vencida. Navios que a Shipxy vê chegando ao porto mas que não estão no DSS (outros terminais) aparecem à parte em `naviosSomenteAis`.
+
+Se uma das fontes falhar, a previsão segue com a outra e explica o problema em `avisos`. Sem DSS, a lista da Shipxy vira a lista principal.
 
 ## Publicação no Render
 
@@ -24,28 +27,33 @@ O serviço `portal-de-navios` publica automaticamente a cada commit na branch `m
 
 | Variável | Obrigatória | Para quê |
 |---|---|---|
-| `SHIPXY_API_KEY` | sim | Chave da Shipxy |
+| `NAVIOS_OF_DSS` (ou `DSS_URL`) | sim | Endereço completo do endpoint Portal de Navios do DSS (`https://…`) |
+| `DSS_USUARIO`, `DSS_SENHA` | sim | Login do DSS (Basic Auth). Também podem ir embutidos na URL: `https://usuario:senha@host/caminho` |
+| `DSS_TOKEN` | não | Use no lugar de usuário/senha se o DSS autenticar por token (`Authorization: Bearer`) |
+| `SHIPXY_API_KEY` | recomendada | Chave **de servidor** da Shipxy (console em api.shipxy.com). Sem ela, a previsão usa só o DSS |
 | `DATABASE_URL` | recomendada | *Internal Database URL* do `portal-de-navios-db`. Sem ela, os contêineres ficam em memória e somem quando o serviço reinicia |
 | `PORTO_PADRAO` | não | Código de porto **da Shipxy** (padrão `BRSSZ`). A Shipxy usa códigos próprios, que podem diferir do UN/LOCODE. Descubra com `/api/portos?busca=santos` |
 | `PORTO_NOME` | não | Nome do porto buscado no diagnóstico da inicialização (padrão `Santos`) |
-| `VERIFICAR_FONTES` | não | `false` desliga as consultas de diagnóstico à Shipxy feitas ao iniciar |
+| `VERIFICAR_FONTES` | não | `false` desliga as consultas de diagnóstico ao DSS e à Shipxy feitas ao iniciar |
 | `DIAS_PADRAO`, `TOLERANCIA_DIVERGENCIA_HORAS`, `INTERVALO_TEMPO_REAL_MS`, `CORS_ORIGIN` | não | Ajustes finos |
 
 ### Diagnóstico na inicialização
 
 Ao iniciar, o servidor escreve no log (aba **Logs** do Render):
-- os **nomes** das variáveis de configuração presentes (nunca os valores);
+- os **nomes** das variáveis de configuração presentes (nunca os valores) e se `NAVIOS_OF_DSS` é uma URL (mostra só host e caminho);
+- o resultado de uma consulta ao DSS: quantas atracações, terminais e exemplos, ou a mensagem de erro dele (401, 403, 500);
 - o resultado de `SearchPort` para `PORTO_PADRAO` e `PORTO_NOME` (mostra o código certo do porto na Shipxy);
 - o resultado de `GetETAShips` para os próximos 7 dias. Se a chave não tiver a permissão avançada, aparece a mensagem de erro da Shipxy.
 
 ## Endpoints
 
-Todas as rotas aceitam `?incluirBruto=true` para anexar a resposta original da Shipxy (para conferir o que ela devolve).
+Todas as rotas aceitam `?incluirBruto=true` para anexar a resposta original do DSS e da Shipxy (para conferir o que cada uma devolve).
 
 | Método | Rota | Para quê |
 |---|---|---|
 | GET | `/api/health` | Status, banco em uso e fontes configuradas |
-| GET | `/api/previsao-entrada?porto=BRSSZ&dias=7` | **Principal.** Navios chegando + contêineres monitorados em cada um |
+| GET | `/api/previsao-entrada?porto=BRSSZ&dias=7&terminal=btp` | **Principal.** Atracações do DSS + ETA do AIS + contêineres monitorados em cada navio. `terminal` é opcional |
+| GET | `/api/dss/atracacoes?terminal=btp` | Atracações do DSS normalizadas (use `incluirBruto=true` para ver a resposta original) |
 | GET | `/api/navios/chegadas?porto=BRSSZ&dias=7` | Só os navios previstos (Shipxy `GetETAShips`) |
 | GET | `/api/navios/{mmsi}` | Posição atual de um navio (Shipxy `GetSingleShip`) |
 | GET | `/api/portos?busca=santos` | Código do porto na Shipxy (`SearchPort`) |
@@ -74,25 +82,42 @@ Na página inicial, o botão **Usar navio** da previsão preenche os dados do na
 ```json
 {
   "porto": "BRSSZ",
+  "terminal": "btp",
   "janela": { "inicio": "…", "fim": "…", "dias": 7 },
-  "fontes": { "navios": "shipxy" },
+  "fontes": { "atracacoes": "dss", "ais": "shipxy" },
+  "avisos": [],
   "resumo": {
-    "totalNavios": 12,
+    "totalNavios": 8,
     "naviosComConteineresMonitorados": 2,
+    "naviosSomenteAis": 4,
     "totalConteineresPrevistos": 5,
-    "totalDivergencias": 0,
+    "totalDivergencias": 1,
     "porDia": { "2026-10-27": { "navios": 3, "conteineres": 2 } }
   },
   "navios": [
     {
-      "mmsi": "123456789", "imo": "9876543", "nome": "MSC ANNA", "eta": "2026-10-27T12:00:00.000Z",
-      "posicao": { "lat": -24.2, "lon": -45.9, "velocidade": 14.2, "rumo": 40, "atualizadoEm": "…" },
+      "fonte": "dss",
+      "nome": "MSC ANNA", "viagem": "123S", "armador": "MSC", "terminal": "btp",
+      "situacao": "previsto",
+      "eta": "2026-10-27T12:00:00.000Z",
+      "datas": {
+        "deadline": "…", "prevChegada": "2026-10-27T12:00:00.000Z", "prevAtracacao": "…", "atracacao": null,
+        "prevSaida": "…", "prevAberturaGate": "…", "aberturaGate": "…",
+        "prevLiberacaoDry": "…", "liberacaoDry": null, "prevLiberacaoReefer": "…", "liberacaoReefer": null
+      },
+      "mmsi": "123456789", "imo": "9876543",
+      "ais": { "mmsi": "123456789", "imo": "9876543", "eta": "2026-10-27T11:00:00.000Z", "destino": "SANTOS", "posicao": { "lat": -24.2, "lon": -45.9 } },
+      "diferencaHorasAisParaDss": -1,
       "totalConteineres": 2,
       "conteineres": [{ "numero": "MSCU1234566", "armador": "MSCU", "perigoso": false }]
     }
   ],
+  "naviosSomenteAis": [],
   "semNavioNaLista": [],
-  "divergencias": []
+  "divergencias": [
+    { "tipo": "chegada-dss-x-ais", "navio": "MAERSK ESSEN", "viagem": "045W",
+      "chegadaDss": "…", "etaAis": "…", "diferencaHoras": 40 }
+  ]
 }
 ```
 
@@ -135,6 +160,7 @@ src/
   util.js                   validações, datas, dígito verificador ISO 6346
   db/schema.sql             tabelas conteineres e eventos_conteiner
   db/index.js               armazenamento PostgreSQL ou memória
+  services/dss.js           atracações (DSS – Portal de Navios do TMS)
   services/shipxy.js        navios e portos (Shipxy)
   services/etracking.js     ponto de encaixe do eTracking (sem fonte ligada)
   services/conteineres.js   sincronização com o eTracking

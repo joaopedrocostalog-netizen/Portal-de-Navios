@@ -10,6 +10,7 @@ const shipxy = require('./services/shipxy');
 const { sincronizar } = require('./services/conteineres');
 
 const etracking = require('./services/etracking');
+const dss = require('./services/dss');
 
 const DIA = 24 * 3600 * 1000;
 
@@ -19,7 +20,43 @@ function registrarVariaveis() {
   const ignorar = /^(RENDER|npm_|NODE_|PATH$|HOME$|HOSTNAME$|PWD$)/;
   const nomes = Object.keys(process.env).filter((n) => relevante.test(n) && !ignorar.test(n)).sort();
   console.log(`[diagnóstico] variáveis encontradas (só os nomes): ${nomes.join(', ') || 'nenhuma'}`);
-  console.log(`[diagnóstico] shipxy: ${shipxy.configurada() ? 'configurada' : 'demo'} | eTracking: ${etracking.descricao()}`);
+  for (const nome of ['DSS_URL', 'NAVIOS_OF_DSS']) {
+    const valor = String(process.env[nome] || '').trim();
+    if (!valor) continue;
+    if (/^https?:\/\//i.test(valor)) {
+      const url = new URL(valor);
+      const credenciais = url.username ? ', com usuário embutido na URL' : '';
+      console.log(`[diagnóstico] ${nome} é uma URL: ${url.protocol}//${url.host}${url.pathname}${credenciais}`);
+    } else {
+      console.log(`[diagnóstico] ${nome} não é uma URL (${valor.length} caracteres); o DSS precisa do endereço completo do endpoint.`);
+    }
+  }
+  console.log(
+    `[diagnóstico] dss: ${dss.configurado() ? `configurado (autenticação: ${dss.prepararRequisicao().autenticacao})` : 'não configurado'}` +
+      ` | shipxy: ${shipxy.configurada() ? 'configurada' : 'não configurada'} | eTracking: ${etracking.descricao()}` +
+      `${config.modoDemo ? ' | MODO DEMONSTRAÇÃO' : ''}`,
+  );
+}
+
+function resumir(objeto) {
+  const texto = JSON.stringify(objeto ?? {});
+  return texto.length > 500 ? `${texto.slice(0, 500)}…` : texto;
+}
+
+/** Consulta o DSS ao iniciar e registra no log o que ele devolveu. */
+async function verificarDss() {
+  if (!dss.configurado() || !config.verificarFontes) return;
+  try {
+    const r = await dss.atracacoes();
+    const terminais = [...new Set(r.dados.map((a) => a.terminal).filter(Boolean))].join(', ');
+    const exemplos = r.dados
+      .slice(0, 3)
+      .map((a) => `${a.navio} v.${a.viagem} (${a.terminal}, chegada ${a.datas.prevChegada}, atracação ${a.datas.atracacao || a.datas.prevAtracacao})`)
+      .join('; ');
+    console.log(`[diagnóstico] DSS OK: ${r.dados.length} atracações. Terminais: ${terminais || '-'}. ${exemplos}`);
+  } catch (erro) {
+    console.log(`[diagnóstico] DSS falhou: ${erro.message} ${resumir(erro.detalhes)}`);
+  }
 }
 
 /** Faz consultas pequenas à Shipxy ao iniciar e registra no log se a chave e o código do porto funcionam. */
@@ -47,8 +84,8 @@ async function verificarShipxy() {
 async function iniciar({ porta = config.porta, store = criarArmazenamento() } = {}) {
   await store.iniciar();
 
-  // Sem banco e sem chave da Shipxy, cadastra contêineres de exemplo para a previsão já mostrar algo.
-  if (store.tipo === 'memoria' && !shipxy.configurada()) {
+  // Em modo demonstração e sem banco, cadastra contêineres de exemplo para a previsão já mostrar algo.
+  if (store.tipo === 'memoria' && config.modoDemo) {
     for (const c of demo.CONTEINERES) {
       const navio = demo.NAVIOS[c.navio];
       await store.salvarConteiner(c.numero, {
@@ -73,7 +110,9 @@ async function iniciar({ porta = config.porta, store = criarArmazenamento() } = 
   console.log(`Portal de Navios ouvindo na porta ${port} (banco: ${store.tipo}).`);
   if (require.main === module) {
     registrarVariaveis();
-    verificarShipxy().catch((erro) => console.log(`[diagnóstico] falha inesperada: ${erro.message}`));
+    verificarDss()
+      .then(verificarShipxy)
+      .catch((erro) => console.log(`[diagnóstico] falha inesperada: ${erro.message}`));
   }
 
   async function encerrar() {
