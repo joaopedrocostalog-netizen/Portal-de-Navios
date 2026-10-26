@@ -2,8 +2,9 @@
 
 // Previsão de entrada de contêineres:
 //   1. Shipxy diz quais navios chegam ao porto na janela (ETA pelo AIS).
-//   2. Os contêineres monitorados são ligados a esses navios por MMSI, IMO ou nome.
-//   3. O ETA do eTracking (VesselFinder) de cada contêiner é comparado com o ETA do navio;
+//   2. Os contêineres monitorados são ligados a esses navios por MMSI, IMO ou nome
+//      (informados no cadastro ou preenchidos por uma fonte de eTracking, se houver).
+//   3. Quando o contêiner tem ETA do eTracking, ele é comparado com o ETA do navio;
 //      diferenças acima da tolerância viram "divergências" para conferência.
 
 const config = require('../config');

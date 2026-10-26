@@ -58,9 +58,14 @@ function navioPorMmsiDemo(mmsi) {
 }
 
 /** Rastreio de demonstração no mesmo formato da resposta normalizada do eTracking. */
-function rastreioDemo(numero, armador, porto = 'BRSSZ') {
+function rastreioDemo(numero, armador, porto = 'BRSSZ', navioMmsi = null) {
   const conhecido = CONTEINERES.find((c) => c.numero === numero);
-  const indice = conhecido ? conhecido.navio : [...numero].reduce((s, c) => s + c.charCodeAt(0), 0) % NAVIOS.length;
+  // Respeita o navio informado no cadastro, se for um dos navios de demonstração.
+  const informado = NAVIOS.findIndex((n) => n.mmsi === String(navioMmsi));
+  let indice;
+  if (informado >= 0) indice = informado;
+  else if (conhecido) indice = conhecido.navio;
+  else indice = [...numero].reduce((s, c) => s + c.charCodeAt(0), 0) % NAVIOS.length;
   const navio = navioDemo(indice, porto);
   // O eTracking costuma divergir um pouco do AIS; aqui o último contêiner diverge 30 h para demonstrar o alerta.
   const desvioHoras = numero === 'HLXU8001005' ? 30 : 2;

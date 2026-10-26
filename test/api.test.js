@@ -2,7 +2,6 @@
 
 // Testes da API em modo demonstração (sem chaves e sem banco).
 process.env.SHIPXY_API_KEY = '';
-process.env.VESSELFINDER_API_KEY = '';
 process.env.DATABASE_URL = '';
 
 const test = require('node:test');
@@ -97,6 +96,15 @@ test('cadastro, sincronização, consulta e remoção de contêiner', async () =
   assert.equal((await chamar('/api/conteineres/CSQU3054383')).status, 404);
 });
 
+test('no modo demo, o eTracking respeita o navio informado no cadastro', async () => {
+  const novo = await chamar('/api/conteineres', {
+    method: 'POST',
+    body: JSON.stringify({ numero: 'CSQU3054383', navioNome: 'DEMO SANTOS EXPRESS', navioMmsi: '710000002' }),
+  });
+  assert.equal(novo.corpo.sincronizacao.conteiner.navioNome, 'DEMO SANTOS EXPRESS');
+  await fetch(`${base}/api/conteineres/CSQU3054383`, { method: 'DELETE' });
+});
+
 test('rejeita contêiner inválido e JSON inválido', async () => {
   const invalido = await chamar('/api/conteineres', { method: 'POST', body: JSON.stringify({ numero: 'ABC123' }) });
   assert.equal(invalido.status, 400);
@@ -109,6 +117,13 @@ test('rastreio avulso não grava nada', async () => {
   assert.equal(status, 200);
   assert.equal(corpo.pronto, true);
   assert.equal(corpo.rastreio.numero, 'MSCU1234566');
+});
+
+test('busca de portos em modo demo e validação', async () => {
+  const ok = await chamar('/api/portos?busca=santos');
+  assert.equal(ok.status, 200);
+  assert.equal(ok.corpo.portos[0].codigo, 'BRSSZ');
+  assert.equal((await chamar('/api/portos?busca=s')).status, 400);
 });
 
 test('rota inexistente devolve 404 em JSON', async () => {

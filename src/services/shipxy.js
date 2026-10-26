@@ -4,6 +4,7 @@
 // Documentação: https://apidocs.shipxy.com
 //   - GetSingleShip  -> posição de um navio por MMSI
 //   - GetETAShips    -> navios com ETA para um porto (serviço avançado: a chave precisa dessa permissão)
+//   - SearchPort     -> busca o código de porto da Shipxy pelo nome
 
 const config = require('../config');
 const { obterJson } = require('./http');
@@ -106,4 +107,28 @@ async function chegadasPrevistas(porto, inicio, fim) {
   return { fonte, dados: navios, bruto };
 }
 
-module.exports = { configurada, buscarNavio, chegadasPrevistas, normalizarNavio };
+function normalizarPorto(p) {
+  return {
+    codigo: p.port_code || null,
+    nome: p.port_name || null,
+    nomeChines: p.port_cnname || null,
+    pais: p.port_country_name || null,
+    codigoPais: p.port_country_code || null,
+    fusoHorario: p.port_time_zone ?? null,
+  };
+}
+
+/**
+ * Busca portos por nome (inglês ou chinês) ou código de 5 letras.
+ * A Shipxy usa códigos próprios (ex.: Qingdao = CNQDG), que podem diferir do UN/LOCODE oficial;
+ * use o `codigo` devolvido aqui nas outras consultas de porto.
+ */
+async function buscarPortos(termo, max = 10) {
+  if (!configurada()) {
+    return { fonte: 'demo', dados: [{ codigo: 'BRSSZ', nome: 'Santos (demo)', nomeChines: null, pais: 'Brazil', codigoPais: 'BR', fusoHorario: '-3' }], bruto: null };
+  }
+  const corpo = await chamar('SearchPort', { keywords: termo, max });
+  return { fonte: 'shipxy', dados: comoLista(corpo.data).map(normalizarPorto), bruto: corpo };
+}
+
+module.exports = { configurada, buscarNavio, chegadasPrevistas, buscarPortos, normalizarNavio };

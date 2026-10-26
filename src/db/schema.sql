@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS eventos_conteiner (
   data_hora     TIMESTAMPTZ,
   realizado     BOOLEAN     NOT NULL DEFAULT FALSE,
   navio         TEXT,
-  fonte         VARCHAR(20) NOT NULL DEFAULT 'vesselfinder',
+  fonte         VARCHAR(20) NOT NULL DEFAULT 'etracking',
   registrado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (numero, chave)
 );

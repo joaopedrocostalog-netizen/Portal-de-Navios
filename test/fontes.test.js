@@ -1,14 +1,13 @@
 'use strict';
 
-// Testa a leitura das respostas reais das APIs (Shipxy e VesselFinder) simulando o fetch,
+// Testa a leitura das respostas reais da Shipxy simulando o fetch,
 // sem gastar créditos nem precisar de rede.
 process.env.SHIPXY_API_KEY = 'chave-shipxy-teste';
-process.env.VESSELFINDER_API_KEY = 'chave-vf-teste';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const shipxy = require('../src/services/shipxy');
-const vesselfinder = require('../src/services/vesselfinder');
+const etracking = require('../src/services/etracking');
 const { digitoVerificadorValido, paraIso } = require('../src/util');
 
 const fetchOriginal = global.fetch;
@@ -78,47 +77,37 @@ test('Shipxy GetSingleShip normaliza posição', async () => {
   assert.deepEqual(r.dados.posicao, { lat: -23.9, lon: -46.3, velocidade: 12, rumo: null, atualizadoEm: paraIso(1792000000) });
 });
 
-test('VesselFinder 200: normaliza e calcula ETA de destino', async () => {
+test('Shipxy SearchPort normaliza os portos', async () => {
   simular(200, {
-    status: 'success',
-    general: { origin: 'Shanghai CNSHA', destination: 'Santos BRSSZ', progress: 65, currentLocation: 'At sea', carrier: 'MSC', sealine: 'MSCU' },
-    schedule: [
-      { port: 'Shanghai', locode: 'CNSHA', event: 'Loaded', timestamp: '2026-10-01T10:00:00Z', actual: true, vessel: 'MSC ANNA' },
-      { port: 'Santos', locode: 'BRSSZ', event: 'Discharge', timestamp: '2026-10-30T08:00:00Z', actual: false, vessel: 'MSC ANNA' },
-      { port: 'Santos', locode: 'BRSSZ', event: 'Gate out', timestamp: '2026-11-02T08:00:00Z', actual: false },
-    ],
-    vessel: { name: 'MSC ANNA', imo: 9000001, mmsi: 710000001, latitude: -10, longitude: -30, speed: 15, course: 200 },
+    status: 0,
+    msg: 'ok',
+    total: 1,
+    data: [{ port_code: 'CNQDG', port_name: 'Qingdao', port_cnname: '青岛', port_time_zone: '+8', port_country_name: 'China', port_country_code: 'CN' }],
   });
-  const r = await vesselfinder.rastrear('MSCU1234566', 'MSCU');
-  assert.ok(ultimaUrl.endsWith('/container/chave-vf-teste/MSCU1234566/MSCU'));
-  assert.equal(r.pronto, true);
-  assert.equal(r.dados.locodeDestino, 'BRSSZ');
-  assert.equal(r.dados.etaDestino, '2026-11-02T08:00:00.000Z');
-  assert.equal(r.dados.navio.mmsi, '710000001');
-  assert.equal(r.dados.eventos.length, 3);
+  const r = await shipxy.buscarPortos('qingdao', 6);
+  const url = new URL(ultimaUrl);
+  assert.equal(url.pathname, '/apicall/v3/SearchPort');
+  assert.equal(url.searchParams.get('keywords'), 'qingdao');
+  assert.equal(url.searchParams.get('max'), '6');
+  assert.deepEqual(r.dados[0], { codigo: 'CNQDG', nome: 'Qingdao', nomeChines: '青岛', pais: 'China', codigoPais: 'CN', fusoHorario: '+8' });
 });
 
-test('VesselFinder 202: devolve "na fila" com tempo de espera mínimo de 60 s', async () => {
-  simular(202, { status: 'queued', retryAfter: 30 });
-  const r = await vesselfinder.rastrear('MSCU1234566', 'AUTO');
-  assert.equal(r.pronto, false);
-  assert.equal(r.situacao, 'queued');
-  assert.equal(r.tenteNovamenteEmSegundos, 60);
+test('sem fonte de eTracking, a consulta devolve 501 com orientação', async () => {
+  assert.equal(etracking.configurada(), false);
+  assert.equal(etracking.disponivel(), false);
+  await assert.rejects(etracking.rastrear('MSCU1234566'), (e) => {
+    assert.equal(e.status, 501);
+    assert.match(e.message, /Informe o navio/);
+    return true;
+  });
 });
 
-test('VesselFinder 401 e 409 viram mensagens em português', async () => {
-  simular(401, { status: 'error' });
-  await assert.rejects(vesselfinder.rastrear('MSCU1234566'), /VESSELFINDER_API_KEY inválida/);
-  simular(409, { status: 'error', code: 'CARRIER', message: 'not found' });
-  await assert.rejects(vesselfinder.rastrear('MSCU1234566'), (e) => e.status === 409);
-});
-
-test('mensagens de erro nunca expõem a chave', async () => {
+test('mensagens de erro de rede nunca expõem a chave', async () => {
   global.fetch = async () => {
     throw new Error('boom');
   };
-  await assert.rejects(vesselfinder.rastrear('MSCU1234566'), (e) => {
-    assert.doesNotMatch(e.message, /chave-vf-teste/);
+  await assert.rejects(shipxy.buscarNavio('710000001'), (e) => {
+    assert.doesNotMatch(e.message, /chave-shipxy-teste/);
     return true;
   });
 });

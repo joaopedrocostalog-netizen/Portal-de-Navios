@@ -9,7 +9,7 @@ const path = require('node:path');
 const config = require('./config');
 const pacote = require('../package.json');
 const shipxy = require('./services/shipxy');
-const vesselfinder = require('./services/vesselfinder');
+const etracking = require('./services/etracking');
 const { sincronizar, semBruto } = require('./services/conteineres');
 const { preverEntrada } = require('./services/previsao');
 const {
@@ -103,11 +103,20 @@ function criarApp(store) {
       banco: store.tipo,
       fontes: {
         shipxy: shipxy.configurada() ? 'configurada' : 'demo (defina SHIPXY_API_KEY)',
-        vesselfinder: vesselfinder.configurada() ? 'configurada' : 'demo (defina VESSELFINDER_API_KEY)',
+        etracking: etracking.descricao(),
       },
       portoPadrao: config.portoPadrao,
     },
   }));
+
+  // ------------------------------------------------------------------ portos
+  rota('GET', '/api/portos', async ({ query }) => {
+    const busca = String(query.busca || '').trim();
+    if (busca.length < 2) throw new ErroApi('Informe ao menos 2 letras em "busca", ex.: /api/portos?busca=santos.', { status: 400 });
+    const max = Math.min(Math.max(Number(query.max) || 10, 1), 50);
+    const r = await shipxy.buscarPortos(busca, max);
+    return { corpo: { fonte: r.fonte, total: r.dados.length, portos: r.dados, ...(querBruto(query) ? { bruto: r.bruto } : {}) } };
+  });
 
   // ------------------------------------------------------------------ navios
   rota('GET', '/api/navios/chegadas', async ({ query }) => {
@@ -165,7 +174,7 @@ function criarApp(store) {
       conteiner: semBruto(conteiner),
       digitoVerificadorValido: digitoVerificadorValido(numero),
     };
-    if (dados.sincronizar !== false) {
+    if (dados.sincronizar !== false && etracking.disponivel()) {
       try {
         resposta.sincronizacao = await sincronizar(store, numero);
       } catch (erro) {
@@ -195,7 +204,7 @@ function criarApp(store) {
   rota('GET', '/api/conteineres/:numero/rastreio', async ({ params, query }) => {
     const numero = normalizarNumeroConteiner(params.numero);
     const armador = normalizarArmador(query.armador);
-    const r = await vesselfinder.rastrear(numero, armador);
+    const r = await etracking.rastrear(numero, armador);
     return {
       status: r.pronto ? 200 : 202,
       cabecalhos: r.pronto ? {} : { 'retry-after': String(r.tenteNovamenteEmSegundos) },

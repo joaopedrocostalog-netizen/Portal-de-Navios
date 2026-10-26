@@ -1,116 +1,115 @@
 # Portal de Navios
 
-API que **prevê a entrada de contêineres no porto a partir da chegada dos navios** e confere essa previsão com o **eTracking** de cada contêiner.
+API que **prevê a entrada de contêineres no porto a partir da chegada dos navios**.
 
-| Fonte | O que entrega aqui | Origem da ideia |
+| Fonte | O que entrega |
+|---|---|
+| [Shipxy](https://apidocs.shipxy.com) (Shipfinder) | Navios com chegada prevista ao porto (ETA pelo AIS), posição de um navio, busca de portos |
+| PostgreSQL (próprio) | Contêineres monitorados: navio em que vêm, carga perigosa, histórico |
+| eTracking | **Nenhuma fonte ligada.** A VesselFinder foi removida por ser paga. Há um ponto de encaixe pronto em `src/services/etracking.js` para ligar outra fonte |
+
+Sem a chave da Shipxy, tudo responde em **modo demonstração** (`"fonte": "demo"`, navios com nome `DEMO …`).
+
+## Como funciona
+
+1. A Shipxy devolve os navios com chegada prevista ao porto nos próximos dias.
+2. Você cadastra cada contêiner informando **o navio em que ele vem** (nome, MMSI ou IMO).
+3. A previsão junta as duas coisas: para cada navio chegando, quais contêineres monitorados estão nele, agrupados por dia.
+
+Se no futuro uma fonte de eTracking for ligada, a previsão também compara o ETA do contêiner com o ETA do navio e aponta divergências.
+
+## Publicação no Render
+
+O serviço `portal-de-navios` publica automaticamente a cada commit na branch `main`. Variáveis em **portal-de-navios › Environment**:
+
+| Variável | Obrigatória | Para quê |
 |---|---|---|
-| [Shipxy](https://apidocs.shipxy.com) | Navios com chegada prevista ao porto (ETA pelo AIS) e posição atual de um navio | Shipxy MCP Server |
-| [VesselFinder Container Tracking](https://apis.io/apis/vesselfinder/vesselfinder-containers-api/) | eTracking do contêiner: navio, eventos, ETA no destino | VesselFinder wrapper |
-| PostgreSQL (próprio) | Cadastro dos contêineres monitorados, carga perigosa e histórico de eventos | PortManager |
+| `SHIPXY_API_KEY` | sim | Chave da Shipxy |
+| `DATABASE_URL` | recomendada | *Internal Database URL* do `portal-de-navios-db`. Sem ela, os contêineres ficam em memória e somem quando o serviço reinicia |
+| `PORTO_PADRAO` | não | Código de porto **da Shipxy** (padrão `BRSSZ`). A Shipxy usa códigos próprios, que podem diferir do UN/LOCODE. Descubra com `/api/portos?busca=santos` |
+| `PORTO_NOME` | não | Nome do porto buscado no diagnóstico da inicialização (padrão `Santos`) |
+| `VERIFICAR_FONTES` | não | `false` desliga as consultas de diagnóstico à Shipxy feitas ao iniciar |
+| `DIAS_PADRAO`, `TOLERANCIA_DIVERGENCIA_HORAS`, `INTERVALO_TEMPO_REAL_MS`, `CORS_ORIGIN` | não | Ajustes finos |
 
-Sem chaves configuradas, cada fonte responde em **modo demonstração** (`"fonte": "demo"`, navios com nome `DEMO …`). Assim dá para publicar e testar antes de contratar as APIs.
+### Diagnóstico na inicialização
 
-## Publicar no Render
-
-1. No [Render](https://dashboard.render.com): **New › Blueprint** e escolha este repositório. O arquivo `render.yaml` cria:
-   - o web service `portal-de-navios` (Node 20, plano free, `/api/health` como health check);
-   - o banco `portal-de-navios-db` (PostgreSQL, plano free), já ligado pela variável `DATABASE_URL`.
-2. O Render pede `SHIPXY_API_KEY` e `VESSELFINDER_API_KEY`. Preencha agora ou depois.
-3. Para adicionar ou trocar as chaves depois: **portal-de-navios › Environment › Edit**. O Render faz um novo deploy sozinho.
-4. Abra a URL do serviço: a página inicial mostra quais fontes estão ativas e permite testar tudo.
-
-Avisos do plano free do Render: o serviço "dorme" depois de um tempo sem acesso (a primeira chamada demora), e o Postgres gratuito tem prazo de validade. Confira os limites no painel antes de usar em produção.
+Ao iniciar, o servidor escreve no log (aba **Logs** do Render):
+- os **nomes** das variáveis de configuração presentes (nunca os valores);
+- o resultado de `SearchPort` para `PORTO_PADRAO` e `PORTO_NOME` (mostra o código certo do porto na Shipxy);
+- o resultado de `GetETAShips` para os próximos 7 dias. Se a chave não tiver a permissão avançada, aparece a mensagem de erro da Shipxy.
 
 ## Endpoints
 
-Todas as rotas aceitam `?incluirBruto=true` para anexar a resposta original da fonte. Serve para **confirmar o que cada API devolve**.
+Todas as rotas aceitam `?incluirBruto=true` para anexar a resposta original da Shipxy (para conferir o que ela devolve).
 
 | Método | Rota | Para quê |
 |---|---|---|
-| GET | `/api/health` | Status, banco em uso e quais fontes estão configuradas |
-| GET | `/api/previsao-entrada?porto=BRSSZ&dias=7` | **Principal.** Navios chegando + contêineres monitorados em cada um + divergências de ETA |
+| GET | `/api/health` | Status, banco em uso e fontes configuradas |
+| GET | `/api/previsao-entrada?porto=BRSSZ&dias=7` | **Principal.** Navios chegando + contêineres monitorados em cada um |
 | GET | `/api/navios/chegadas?porto=BRSSZ&dias=7` | Só os navios previstos (Shipxy `GetETAShips`) |
 | GET | `/api/navios/{mmsi}` | Posição atual de um navio (Shipxy `GetSingleShip`) |
-| GET | `/api/conteineres/{numero}/rastreio?armador=AUTO` | Consulta o eTracking **sem gravar** |
-| POST | `/api/conteineres` | Cadastra contêiner para monitorar (e já sincroniza com o eTracking) |
+| GET | `/api/portos?busca=santos` | Código do porto na Shipxy (`SearchPort`) |
+| POST | `/api/conteineres` | Cadastra ou atualiza um contêiner monitorado |
 | GET | `/api/conteineres` | Lista os monitorados (`?situacao=monitorando`) |
 | GET | `/api/conteineres/{numero}` | Detalhe + histórico de eventos |
-| POST | `/api/conteineres/{numero}/sincronizar` | Atualiza o contêiner com o eTracking |
 | DELETE | `/api/conteineres/{numero}` | Para de monitorar |
-| WS | `/ws` | Atualizações em tempo real (ver abaixo) |
-
-### Como a previsão é montada
-
-1. A Shipxy devolve os navios com ETA para o porto na janela pedida.
-2. Cada contêiner monitorado é ligado a um navio por **MMSI**, **IMO** ou **nome** (o eTracking preenche esses dados ao sincronizar).
-3. O ETA do eTracking é comparado com o ETA do navio. Diferença acima de `TOLERANCIA_DIVERGENCIA_HORAS` (24 h por padrão) entra em `divergencias`.
-4. Contêineres que o eTracking diz chegar a este porto na janela, mas cujo navio não está na lista da Shipxy, aparecem em `semNavioNaLista` (navio trocado, transbordo ou ETA desatualizado).
-
-Resposta resumida:
-
-```json
-{
-  "porto": "BRSSZ",
-  "janela": { "inicio": "2026-10-26T18:00:00.000Z", "fim": "2026-11-02T18:00:00.000Z", "dias": 7 },
-  "fontes": { "navios": "shipxy" },
-  "resumo": {
-    "totalNavios": 3,
-    "naviosComConteineresMonitorados": 2,
-    "totalConteineresPrevistos": 4,
-    "totalDivergencias": 1,
-    "porDia": { "2026-10-27": { "navios": 1, "conteineres": 2 } }
-  },
-  "navios": [
-    {
-      "mmsi": "710000001", "imo": "9000001", "nome": "NOME DO NAVIO",
-      "eta": "2026-10-27T12:00:00.000Z",
-      "posicao": { "lat": -24.2, "lon": -45.9, "velocidade": 14.2, "rumo": 40, "atualizadoEm": "…" },
-      "totalConteineres": 2,
-      "conteineres": [
-        { "numero": "MSCU1234566", "armador": "MSCU", "perigoso": false,
-          "etaEtracking": "2026-10-27T14:00:00.000Z", "diferencaHorasParaEtaNavio": 2 }
-      ]
-    }
-  ],
-  "semNavioNaLista": [],
-  "divergencias": [
-    { "conteiner": "HLXU8001005", "navio": "NOME DO NAVIO",
-      "etaNavioAis": "…", "etaEtracking": "…", "diferencaHoras": 30 }
-  ]
-}
-```
+| GET | `/api/conteineres/{numero}/rastreio` | eTracking avulso. Responde **501** enquanto não houver fonte ligada |
+| POST | `/api/conteineres/{numero}/sincronizar` | Atualiza pelo eTracking. Responde **501** enquanto não houver fonte ligada |
+| WS | `/ws` | Atualizações em tempo real |
 
 ### Cadastrar contêiner
 
 ```bash
-curl -X POST https://SEU-SERVICO.onrender.com/api/conteineres \
+curl -X POST https://portal-de-navios.onrender.com/api/conteineres \
   -H 'content-type: application/json' \
-  -d '{"numero":"MSCU1234566","armador":"MSCU","descricao":"Peças","perigoso":false}'
+  -d '{"numero":"MSCU1234566","armador":"MSCU","navioNome":"MSC ANNA","navioMmsi":"123456789","perigoso":false}'
 ```
 
-Campos: `numero` (obrigatório, 4 letras + 7 dígitos), `armador` (SCAC ou `AUTO`), `descricao`, `perigoso`, `classeRisco`, `navioMmsi`, `navioImo`, `navioNome`, `sincronizar` (padrão `true`). A resposta informa se o dígito verificador ISO 6346 confere (`digitoVerificadorValido`).
+Campos: `numero` (obrigatório, 4 letras + 7 dígitos), `armador` (SCAC ou `AUTO`), `navioNome`, `navioMmsi`, `navioImo`, `descricao`, `perigoso`, `classeRisco`, `situacao`. Enviar de novo o mesmo número atualiza o cadastro. A resposta informa se o dígito verificador ISO 6346 confere (`digitoVerificadorValido`).
 
-### eTracking em fila (HTTP 202)
+Na página inicial, o botão **Usar navio** da previsão preenche os dados do navio no formulário de cadastro.
 
-A VesselFinder às vezes processa a consulta em segundo plano. Nesse caso a API devolve **202** com `tenteNovamenteEmSegundos` (mínimo 60) e o cabeçalho `Retry-After`. Repita a mesma chamada depois desse tempo.
+### Previsão (resposta resumida)
+
+```json
+{
+  "porto": "BRSSZ",
+  "janela": { "inicio": "…", "fim": "…", "dias": 7 },
+  "fontes": { "navios": "shipxy" },
+  "resumo": {
+    "totalNavios": 12,
+    "naviosComConteineresMonitorados": 2,
+    "totalConteineresPrevistos": 5,
+    "totalDivergencias": 0,
+    "porDia": { "2026-10-27": { "navios": 3, "conteineres": 2 } }
+  },
+  "navios": [
+    {
+      "mmsi": "123456789", "imo": "9876543", "nome": "MSC ANNA", "eta": "2026-10-27T12:00:00.000Z",
+      "posicao": { "lat": -24.2, "lon": -45.9, "velocidade": 14.2, "rumo": 40, "atualizadoEm": "…" },
+      "totalConteineres": 2,
+      "conteineres": [{ "numero": "MSCU1234566", "armador": "MSCU", "perigoso": false }]
+    }
+  ],
+  "semNavioNaLista": [],
+  "divergencias": []
+}
+```
 
 ### Tempo real (WebSocket)
 
 ```js
-const ws = new WebSocket('wss://SEU-SERVICO.onrender.com/ws');
+const ws = new WebSocket('wss://portal-de-navios.onrender.com/ws');
 ws.onopen = () => ws.send(JSON.stringify({ acao: 'acompanhar-porto', porto: 'BRSSZ', dias: 7 }));
-// ou { acao: 'acompanhar-navio', mmsi: '710000001' } / { acao: 'parar', chave: 'porto:BRSSZ:7' }
+// ou { acao: 'acompanhar-navio', mmsi: '123456789' } / { acao: 'parar', chave: 'porto:BRSSZ:7' }
 ws.onmessage = (m) => console.log(JSON.parse(m.data)); // { tipo: 'atualizacao', chave, em, dados }
 ```
 
-Cada assunto é consultado uma vez por `INTERVALO_TEMPO_REAL_MS`, não importa quantos clientes estejam ouvindo, para não gastar créditos das APIs.
+Cada assunto é consultado uma vez por `INTERVALO_TEMPO_REAL_MS`, não importa quantos clientes estejam ouvindo, para economizar consultas à Shipxy.
 
-## O que conferir quando as chaves chegarem
+## Ligar uma fonte de eTracking
 
-O código segue a documentação pública das duas APIs, mas alguns pontos só dá para confirmar com uma chave real. Use `?incluirBruto=true` e compare:
-
-- **Shipxy**: o `GetETAShips` é serviço avançado (a chave precisa dessa permissão). O código trata `status: 0` como sucesso e qualquer outro valor como erro, mostrando o `msg`. Confira também a unidade de `sog` (velocidade) e se o `port_code` aceita o UN/LOCODE brasileiro (ex.: `BRSSZ`).
-- **VesselFinder**: confira o formato de `general.destination` (o locode do destino é extraído dele para calcular o ETA) e de `schedule[].timestamp`.
+Edite `src/services/etracking.js`: faça `configurada()` retornar `true` quando a chave existir e implemente `rastrear(numero, armador)` devolvendo os dados no formato descrito no topo do arquivo. O resto (cadastro, histórico de eventos, comparação de ETA na previsão) já usa essa função.
 
 ## Rodar localmente
 
@@ -118,29 +117,29 @@ Requer Node 20+.
 
 ```bash
 npm install
-cp .env.example .env   # opcional: preencha as chaves
+cp .env.example .env   # opcional: preencha a chave
 npm start              # http://localhost:3000
 npm test
 ```
 
-Sem `DATABASE_URL`, os dados ficam em memória e o servidor cadastra 4 contêineres de exemplo para a previsão já mostrar resultado.
+Sem `DATABASE_URL`, os dados ficam em memória. Sem `SHIPXY_API_KEY`, o servidor também cadastra 4 contêineres de exemplo para a previsão já mostrar resultado.
 
 ## Estrutura
 
 ```
 src/
-  server.js              inicia HTTP + WebSocket
-  app.js                 rotas da API (http nativo do Node)
-  realtime.js            WebSocket /ws
-  config.js              variáveis de ambiente
-  util.js                validações, datas, dígito verificador ISO 6346
-  db/schema.sql          tabelas conteineres e eventos_conteiner
-  db/index.js            armazenamento PostgreSQL ou memória
-  services/shipxy.js     navios (Shipxy)
-  services/vesselfinder.js  eTracking (VesselFinder)
+  server.js                 inicia HTTP + WebSocket e faz o diagnóstico da Shipxy
+  app.js                    rotas da API (http nativo do Node)
+  realtime.js               WebSocket /ws
+  config.js                 variáveis de ambiente
+  util.js                   validações, datas, dígito verificador ISO 6346
+  db/schema.sql             tabelas conteineres e eventos_conteiner
+  db/index.js               armazenamento PostgreSQL ou memória
+  services/shipxy.js        navios e portos (Shipxy)
+  services/etracking.js     ponto de encaixe do eTracking (sem fonte ligada)
   services/conteineres.js   sincronização com o eTracking
-  services/previsao.js   previsão de entrada (combina tudo)
-  services/demo.js       dados de demonstração
-public/index.html        página para testar a API
-render.yaml              blueprint do Render
+  services/previsao.js      previsão de entrada (combina tudo)
+  services/demo.js          dados de demonstração
+public/index.html           página para testar a API
+render.yaml                 blueprint do Render
 ```

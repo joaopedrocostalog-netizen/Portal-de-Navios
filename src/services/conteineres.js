@@ -1,8 +1,8 @@
 'use strict';
 
-// Regras de contêineres: cadastrar para monitorar e sincronizar com o eTracking.
+// Regras de contêineres: cadastrar para monitorar e, se houver fonte de eTracking, sincronizar.
 
-const vesselfinder = require('./vesselfinder');
+const etracking = require('./etracking');
 const { ErroApi } = require('../util');
 
 function dataOuNulo(valor) {
@@ -11,7 +11,7 @@ function dataOuNulo(valor) {
 
 /**
  * Consulta o eTracking e grava o resultado no contêiner.
- * Se a VesselFinder ainda estiver processando (HTTP 202), nada é gravado e o retorno indica quando tentar de novo.
+ * Se a fonte ainda estiver processando (pronto: false), nada é gravado e o retorno indica quando tentar de novo.
  */
 async function sincronizar(store, numero, { incluirBruto = false } = {}) {
   const existente = await store.obterConteiner(numero);
@@ -21,14 +21,14 @@ async function sincronizar(store, numero, { incluirBruto = false } = {}) {
     });
   }
 
-  const resultado = await vesselfinder.rastrear(numero, existente.armador || 'AUTO');
+  const resultado = await etracking.rastrear(numero, existente.armador || 'AUTO', existente);
   if (!resultado.pronto) {
     return {
       sincronizado: false,
       fonte: resultado.fonte,
       situacao: resultado.situacao,
       tenteNovamenteEmSegundos: resultado.tenteNovamenteEmSegundos,
-      conteiner: existente,
+      conteiner: semBruto(existente),
       ...(incluirBruto ? { bruto: resultado.bruto } : {}),
     };
   }

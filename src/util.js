@@ -80,7 +80,7 @@ function normalizarArmador(valor) {
 function normalizarPorto(valor, padrao) {
   const porto = String(valor || padrao || '').trim().toUpperCase();
   if (!PADRAO_LOCODE.test(porto)) {
-    throw new ErroApi('Código de porto inválido. Use o UN/LOCODE de 5 caracteres, ex.: BRSSZ.', {
+    throw new ErroApi('Código de porto inválido. Use o código de 5 caracteres da Shipxy (descubra em /api/portos?busca=santos).', {
       status: 400,
     });
   }

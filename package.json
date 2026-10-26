@@ -1,7 +1,7 @@
 {
   "name": "portal-de-navios",
   "version": "1.0.0",
-  "description": "API que prevê a entrada de contêineres a partir da chegada de navios (Shipxy) combinada com o eTracking (VesselFinder).",
+  "description": "API que prevê a entrada de contêineres no porto a partir da chegada de navios (Shipxy).",
   "main": "src/server.js",
   "private": true,
   "scripts": {
