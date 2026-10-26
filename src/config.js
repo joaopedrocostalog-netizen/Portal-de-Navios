@@ -13,11 +13,12 @@ function carregar() {
   return {
     porta: numero(process.env.PORT, 3000),
 
-    shipxyKey: process.env.SHIPXY_API_KEY || '',
+    // trim(): espaços ou quebras de linha coladas junto com a chave fazem a Shipxy responder "Key不存在".
+    shipxyKey: (process.env.SHIPXY_API_KEY || '').trim(),
     shipxyBaseUrl: process.env.SHIPXY_BASE_URL || 'https://api.shipxy.com/apicall/v3',
 
     // Sem chave da Shipxy não há dado real de navio: tudo vira demonstração.
-    modoDemo: !process.env.SHIPXY_API_KEY,
+    modoDemo: !(process.env.SHIPXY_API_KEY || '').trim(),
 
     databaseUrl: process.env.DATABASE_URL || '',
     databaseSsl: process.env.DATABASE_SSL === 'true',
