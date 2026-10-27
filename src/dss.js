@@ -273,7 +273,8 @@ function criarCliente({ url, usuario = '', senha = '', token = '', timeoutMs = 1
         cache = { em, corpo, registros: normalizarTodos(corpo.registros, em) };
         ultimoErro = null;
         // Gancho para o histórico de mudanças (não atrasa nem derruba a consulta).
-        if (aoAtualizar) Promise.resolve().then(() => aoAtualizar(corpo.registros, em)).catch((e) => console.error('[historico]', e.message));
+        const normalizados = cache.registros;
+        if (aoAtualizar) Promise.resolve().then(() => aoAtualizar(corpo.registros, em, normalizados)).catch((e) => console.error('[historico]', e.message));
         return cache;
       })
       .catch((e) => {

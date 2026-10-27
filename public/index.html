@@ -107,7 +107,8 @@
       <button class="leve" type="button" id="atualizar">Consultar o DSS agora</button>
     </form>
     <div id="tabela"></div>
-    <p class="suave">Resposta original: <a href="/api/dss/bruto" target="_blank">/api/dss/bruto</a> · API: <a href="/api/navios" target="_blank">/api/navios</a> · <a href="/api/resumo" target="_blank">/api/resumo</a> · <a href="/api/mudancas?horas=168" target="_blank">/api/mudancas</a></p>
+    <p class="suave">Resposta original: <a href="/api/dss/bruto" target="_blank">/api/dss/bruto</a> · API: <a href="/api/navios" target="_blank">/api/navios</a> · <a href="/api/resumo" target="_blank">/api/resumo</a> · <a href="/api/mudancas?horas=168" target="_blank">/api/mudancas</a> · <a href="/api/alertas" target="_blank">/api/alertas</a></p>
+    <p class="suave" id="alertas"></p>
   </section>
 </main>
 
@@ -284,6 +285,10 @@
       ultimasMudancas = [lista.mudancas || [], lista.historico];
       mostrarMudancas(...ultimasMudancas);
       mostrarTabela(lista.navios);
+      const al = lista.alertas;
+      $('#alertas').innerHTML = al
+        ? `Alertas por e-mail para ${esc(al.para.join(', '))}: deadlines em 24 h, gates abertos e datas que mudaram.${al.ultimoEnvio ? ` Último envio ${data(al.ultimoEnvio)}.` : ''}${al.erro ? ` <span class="erro">Falha no envio: ${esc(al.erro)}</span>` : ''}`
+        : 'Alertas por e-mail desligados.';
     } catch (e) {
       $('#status').innerHTML = `<span class="erro">${esc(e.message)}</span>`;
       ['#cartoes', '#proximas', '#mudancas', '#tabela'].forEach((s) => ($(s).innerHTML = ''));

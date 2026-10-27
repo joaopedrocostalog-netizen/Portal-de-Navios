@@ -115,7 +115,9 @@ function criarBase({ tipo, diasEmMemoria = 7, carregar = async () => ({ estado: 
 }
 
 function criarMemoria(opcoes = {}) {
-  return criarBase({ tipo: 'memoria', ...opcoes });
+  const ids = new Set();
+  const memoriaAlertas = { carregar: async () => [...ids], gravar: async (novos) => novos.forEach((i) => ids.add(i)) };
+  return { ...criarBase({ tipo: 'memoria', ...opcoes }), memoriaAlertas };
 }
 
 function criarPostgres(url, { diasHistorico = 180, ssl, ...opcoes } = {}) {
@@ -144,7 +146,8 @@ function criarPostgres(url, { diasHistorico = 180, ssl, ...opcoes } = {}) {
           id BIGSERIAL PRIMARY KEY, em TIMESTAMPTZ NOT NULL, chave TEXT NOT NULL,
           terminal TEXT, navio TEXT, viagem TEXT, campo TEXT NOT NULL, de TEXT, para TEXT);
         CREATE INDEX IF NOT EXISTS idx_mudancas_em ON navios_mudancas (em DESC);
-        CREATE INDEX IF NOT EXISTS idx_mudancas_chave ON navios_mudancas (chave, em DESC);`);
+        CREATE INDEX IF NOT EXISTS idx_mudancas_chave ON navios_mudancas (chave, em DESC);
+        CREATE TABLE IF NOT EXISTS alertas_enviados (id TEXT PRIMARY KEY, em TIMESTAMPTZ NOT NULL DEFAULT NOW());`);
       const e = await pool.query('SELECT chave, dados, removido FROM navios_estado');
       const estado = new Map(e.rows.map((l) => [l.chave, { ...(typeof l.dados === 'string' ? JSON.parse(l.dados) : l.dados), ...(l.removido ? { __removido: true } : {}) }]));
       const m = await pool.query(`SELECT * FROM navios_mudancas WHERE em >= NOW() - ($1 || ' days')::interval ORDER BY em`, [String(diasEmMemoria)]);
@@ -175,6 +178,7 @@ function criarPostgres(url, { diasHistorico = 180, ssl, ...opcoes } = {}) {
       // Limpeza diária do histórico antigo (barata: usa o índice por data).
       if (new Date(em).getUTCHours() === 3 && new Date(em).getUTCMinutes() === 0) {
         await pool.query(`DELETE FROM navios_mudancas WHERE em < NOW() - ($1 || ' days')::interval`, [String(diasHistorico)]);
+        await pool.query(`DELETE FROM alertas_enviados WHERE em < NOW() - interval '60 days'`);
       }
     },
     async buscar({ desde, chave, terminal, navio, campo, limite = 500 }) {
@@ -194,7 +198,20 @@ function criarPostgres(url, { diasHistorico = 180, ssl, ...opcoes } = {}) {
       return rows.map(deLinha);
     },
   });
-  return { ...base, encerrar: () => pool.end() };
+  // Alertas já enviados, para não repetir depois de reiniciar.
+  const memoriaAlertas = {
+    async carregar() {
+      const { rows } = await pool.query(`SELECT id FROM alertas_enviados WHERE em >= NOW() - interval '60 days'`);
+      return rows.map((l) => l.id);
+    },
+    async gravar(ids) {
+      for (let i = 0; i < ids.length; i += 500) {
+        const lote = ids.slice(i, i + 500);
+        await pool.query(`INSERT INTO alertas_enviados (id) VALUES ${lote.map((_, j) => `($${j + 1})`).join(', ')} ON CONFLICT (id) DO NOTHING`, lote);
+      }
+    },
+  };
+  return { ...base, memoriaAlertas, encerrar: () => pool.end() };
 }
 
 /**

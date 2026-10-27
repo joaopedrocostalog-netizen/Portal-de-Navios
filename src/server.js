@@ -21,6 +21,7 @@ const zlib = require('node:zlib');
 const crypto = require('node:crypto');
 const { criarCliente, filtrar, resumir, ErroDss } = require('./dss');
 const { iniciarHistorico, criarMemoria, chaveDe, rotuloCampo } = require('./historico');
+const { criarAlertas, criarEnvio } = require('./alertas');
 
 const env = process.env;
 const config = {
@@ -50,7 +51,7 @@ function criarClientePadrao(aoAtualizar = null) {
 const HORA = 36e5;
 const comRotulo = (m) => ({ ...m, rotulo: rotuloCampo(m.campo, m.terminal) });
 
-function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria()) {
+function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(), alertas = null) {
   async function dados(q) {
     if (!cliente) throw new ErroDss('DSS não configurado: defina DSS_URL com o endereço do endpoint listarNavios.', 503);
     return cliente.listar({ forcar: q.atualizar === 'true' });
@@ -104,7 +105,9 @@ function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(
         .filter((m) => chaves.has(m.chave))
         .slice(0, 100)
         .map(comRotulo);
-      return { ...l, historico: historico.tipo, mudancas, resumo: resumir(filtrar(r.registros, q), { horas: horasResumo(q) }) };
+      const a = alertas?.estado();
+      const resumoAlertas = a?.ativo ? { para: a.para, ultimoEnvio: a.ultimoEnvio?.em || null, erro: a.ultimoErro?.mensagem || null } : null;
+      return { ...l, historico: historico.tipo, alertas: resumoAlertas, mudancas, resumo: resumir(filtrar(r.registros, q), { horas: horasResumo(q) }) };
     },
     // Histórico: ?horas=24 (ou desde=ISO) &terminal= &navio= &campo= &chave= &limite=
     '/api/mudancas': async (q) => {
@@ -126,6 +129,17 @@ function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(
     '/api/resumo': async (q) => {
       const r = await dados(q);
       return { consultadoEm: r.consultadoEm, aviso: r.aviso, ...resumir(filtrar(r.registros, q), { horas: horasResumo(q) }) };
+    },
+    // Situação dos alertas por e-mail: regras, fila, último envio e último erro.
+    '/api/alertas': async () => (alertas ? alertas.estado() : { ativo: false }),
+    // Envia um e-mail de teste para ALERTA_PARA (no máximo um a cada 10 min).
+    '/api/alertas/teste': async () => {
+      if (!alertas) throw new ErroDss('Alertas não configurados.', 503);
+      try {
+        return await alertas.testar();
+      } catch (e) {
+        throw new ErroDss(e.message, 400);
+      }
     },
     '/api/dss/bruto': async (q) => (await dados({ ...q, atualizar: 'true' })).bruto,
   };
@@ -172,8 +186,35 @@ function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(
 
 async function main() {
   const historico = await iniciarHistorico();
-  const cliente = criarClientePadrao((registros, em) => historico.registrar(registros, em).then((novas) => novas.length && console.log(`[historico] ${novas.length} mudança(s) detectada(s).`)));
-  const servidor = criarServidor(cliente, historico);
+
+  let alertas = null;
+  try {
+    const envio = criarEnvio({ resendKey: env.RESEND_API_KEY, brevoKey: env.BREVO_API_KEY, de: env.ALERTA_DE, para: env.ALERTA_PARA });
+    alertas = criarAlertas({
+      envio,
+      memoria: historico.memoriaAlertas,
+      persistente: historico.tipo === 'postgres',
+      filtro: Object.fromEntries(new URLSearchParams(env.ALERTA_FILTRO || '')),
+      deadlineHoras: Number(env.ALERTA_DEADLINE_HORAS) || 24,
+      mudancaMinHoras: env.ALERTA_MUDANCA_MIN_HORAS !== undefined && env.ALERTA_MUDANCA_MIN_HORAS !== '' ? Number(env.ALERTA_MUDANCA_MIN_HORAS) : 1,
+      url: config.urlPublica,
+    });
+    console.log(envio ? `[alertas] e-mail via ${envio.provedor} para ${envio.para.join(', ')} a cada ${Number(env.ALERTA_MINUTOS) || 15} min.` : '[alertas] desligados: defina RESEND_API_KEY (ou BREVO_API_KEY) e ALERTA_PARA.');
+    if (envio) setInterval(() => alertas.despachar(), (Number(env.ALERTA_MINUTOS) || 15) * 60e3).unref();
+  } catch (e) {
+    console.log(`[alertas] configuração inválida: ${e.message}`);
+  }
+
+  const cliente = criarClientePadrao(async (registros, em, normalizados) => {
+    const novas = await historico.registrar(registros, em);
+    if (novas.length) console.log(`[historico] ${novas.length} mudança(s) detectada(s).`);
+    if (alertas) {
+      const eventos = await alertas.avaliar(normalizados, novas);
+      // A primeira consulta sai na hora (serve de confirmação de que os alertas funcionam); depois, no intervalo.
+      if (eventos.length && !alertas.estado().ultimoEnvio && !alertas.estado().ultimoErro) await alertas.despachar();
+    }
+  });
+  const servidor = criarServidor(cliente, historico, alertas);
   servidor.listen(config.porta, () => {
     console.log(`Portal de Navios na porta ${config.porta}.`);
     if (!cliente) return console.log('[diagnóstico] DSS_URL não configurado.');

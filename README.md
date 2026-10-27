@@ -54,6 +54,8 @@ Os códigos 400, 401, 403 e 500 chegam com a mensagem do DSS. Por exemplo, 403 s
 | `GET /api/resumo?horas=48` | Contagens por terminal, armador, situação e gate, mais as listas das próximas horas |
 | `GET /api/mudancas?horas=24` | Histórico de mudanças (filtros: `navio`, `terminal`, `campo`, `chave`, `desde`, `limite`) |
 | `GET /api/navio?chave=btp\|MSCINSA\|NA642R` | Detalhe do navio: datas atuais e todas as mudanças registradas |
+| `GET /api/alertas` | Alertas por e-mail: regras, fila, último envio e último erro |
+| `GET /api/alertas/teste` | Envia um e-mail de teste para `ALERTA_PARA` (no máximo um a cada 10 min) |
 | `GET /api/dss/bruto` | Resposta original do DSS, sem tratamento (consulta na hora) |
 | `GET /api/health` | Status, idade do cache, total de registros e último erro do DSS |
 
@@ -81,6 +83,20 @@ Também ficam registrados os navios que entram na lista do DSS, saem dela ou vol
 - **Painel:** bloco "Mudanças nas últimas 24 horas" (só dos navios filtrados), com quanto a data adiou ou antecipou, e o selo "mudou N×" na tabela.
 - **Detalhe do navio:** clique no nome do navio para ver a sequência de datas (chegada, gates, deadline, atracação, liberações, saída), o que já passou e o que vem, e todas as mudanças registradas.
 - **Onde fica:** com `DATABASE_URL`, no PostgreSQL (tabelas `navios_estado` e `navios_mudancas`, criadas sozinhas; 180 dias guardados). Sem ela, ou se o banco não responder, em memória, e o histórico recomeça a cada reinício do servidor.
+
+## Alertas por e-mail
+
+Três regras, avaliadas a cada consulta ao DSS, só para navios não encerrados:
+
+| Alerta | Quando |
+|---|---|
+| Deadline | deadline nas próximas `ALERTA_DEADLINE_HORAS` (24 h) |
+| Gate aberto | gate dry ou reefer abriu nas últimas 24 h |
+| Data mudou | mudou deadline, chegada, atracação, abertura de gate prevista, saída ou liberação, com diferença de pelo menos `ALERTA_MUDANCA_MIN_HORAS` (1 h) |
+
+Os alertas se juntam num e-mail só, enviado a cada `ALERTA_MINUTOS` (15 min) quando há novidade. O mesmo alerta nunca é enviado duas vezes. Com `DATABASE_URL`, os alertas enviados ficam gravados (tabela `alertas_enviados`); sem ela, a primeira consulta depois de reiniciar só serve de base, para não repetir alertas a cada deploy.
+
+O plano gratuito do Render bloqueia SMTP (portas 25, 465 e 587), então o envio é pela API HTTPS do **Resend** (`RESEND_API_KEY`) ou do **Brevo** (`BREVO_API_KEY` + `ALERTA_DE` com o remetente verificado). No Resend sem domínio verificado, o remetente é `onboarding@resend.dev` e só é possível enviar para o e-mail da própria conta.
 
 ## Desempenho
 
@@ -117,6 +133,11 @@ Exemplo de item de `/api/navios`:
 | `MANTER_ACORDADO` | `false` desliga o ping contra a hibernação |
 | `PING_MINUTOS` | Intervalo do ping (10 min; tem de ser menor que os 15 min do Render) |
 | `DATABASE_URL` | PostgreSQL do histórico de mudanças (no Render: *Internal Database URL* do `portal-de-navios-db`) |
+| `ALERTA_PARA` | Destinatários dos alertas (vários separados por vírgula) |
+| `RESEND_API_KEY` ou `BREVO_API_KEY` | Chave da API de e-mail; sem ela, os alertas ficam desligados |
+| `ALERTA_DE` | Remetente (obrigatório no Brevo; no Resend, só com domínio verificado) |
+| `ALERTA_MINUTOS`, `ALERTA_DEADLINE_HORAS`, `ALERTA_MUDANCA_MIN_HORAS` | Intervalo do e-mail (15), janela do deadline (24) e mudança mínima em horas (1) |
+| `ALERTA_FILTRO` | Restringe os alertas, com os mesmos filtros da API (ex.: `terminal=btp&armador=MSC`) |
 | `URL_PUBLICA` | Endereço para o ping, se não estiver no Render (lá é automático) |
 
 Ao iniciar, o servidor escreve no log o endpoint (sem senha), o tipo de login e o resultado de uma consulta de teste ao DSS.
@@ -136,6 +157,7 @@ Requer Node 20+. O único pacote é o `pg`, usado só quando há `DATABASE_URL` 
 ```
 src/dss.js         cliente da API do DSS, normalização, situações, filtros e resumo
 src/historico.js   histórico de mudanças (PostgreSQL ou memória)
+src/alertas.js     alertas por e-mail (regras, fila, Resend/Brevo)
 src/server.js      rotas HTTP e página
 public/index.html  painel e detalhe do navio
 test/              testes com o DSS simulado (PG_TESTE_URL=... testa também com PostgreSQL)
