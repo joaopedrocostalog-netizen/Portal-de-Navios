@@ -72,7 +72,7 @@
     <form id="filtros">
       <label>Terminal<select name="terminal"><option value="">Todos</option></select></label>
       <label>Armador<select name="armador"><option value="">Todos</option></select></label>
-      <label>Navio<select name="situacao"><option value="">Todas</option><option value="previsto">Previsto</option><option value="atracacao_atrasada">Atracação atrasada</option><option value="atracado">Atracado</option><option value="encerrado">Encerrado</option></select></label>
+      <label>Navio<select name="situacao"><option value="">Todas</option><option value="previsto">Previsto</option><option value="aguardando_atracacao">Aguardando atracação</option><option value="chegada_passou">Chegada passou (sem dado de atracação)</option><option value="atracado">Atracado</option><option value="encerrado">Encerrado</option></select></label>
       <label>Gate<select name="gate"><option value="">Todos</option><option value="aguardando">Aguardando abertura</option><option value="aberto">Aberto</option><option value="encerrado">Encerrado</option><option value="sem_dado">Sem dado</option></select></label>
       <label>Busca (navio)<input name="navio" size="14" placeholder="MSC"></label>
       <label>Ordenar<select name="ordenar"><option value="referencia">Atracação</option><option value="chegada">Chegada</option><option value="deadline">Deadline</option><option value="navio">Navio</option></select></label>
@@ -91,12 +91,23 @@
   const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   const data = (iso) => (iso ? fmt.format(new Date(iso)).replace(',', '') : '—');
   const ROTULO = {
-    previsto: ['Previsto', 'azul'], atracacao_atrasada: ['Atracação atrasada', 'vermelho'], atracado: ['Atracado', 'laranja'], encerrado: ['Encerrado', 'cinza'],
+    previsto: ['Previsto', 'azul'], aguardando_atracacao: ['Aguardando atracação', 'amarelo'], chegada_passou: ['Chegada passou', 'cinza'], atracado: ['Atracado', 'laranja'], encerrado: ['Encerrado', 'cinza'],
     aguardando: ['Aguardando', 'azul'], aberto: ['Aberto', 'verde'], sem_dado: ['Sem dado', 'cinza'], liberado: ['Liberado', 'verde'], atrasado: ['Atrasado', 'vermelho'],
   };
   const pill = (v, rotulo) => { const [t, c] = ROTULO[v] || [v, 'cinza']; return `<span class="pill ${c}">${esc(rotulo || t)}</span>`; };
   const h = (n) => (!n ? '' : ` <span class="suave">(${n > 0 ? '+' : ''}${n} h)</span>`);
   const prevReal = (prev, real, atraso) => (real ? `${data(real)}${h(atraso)}` : prev ? `<span class="suave">prev.</span> ${data(prev)}` : '—');
+  const PROBLEMAS = {
+    data_real_no_futuro: 'data "real" no futuro tratada como prevista',
+    reefer_e_abertura_de_gate: 'liberação reefer do DSS lida como abertura de gate reefer',
+    armador_igual_viagem: 'armador do DSS era a viagem',
+    armador_invalido: 'armador do DSS inválido',
+    data_suspeita: 'data a mais de 1 ano descartada',
+  };
+  const ajustes = (n) => {
+    const itens = n.qualidade.filter((q) => PROBLEMAS[q.problema]);
+    return itens.length ? ` <span class="pill amarelo" title="${esc(itens.map((q) => `${q.campo}: ${PROBLEMAS[q.problema]}${q.valor ? ` (${q.valor})` : ''}`).join('\n'))}">dados ajustados</span>` : '';
+  };
   const terminal = (t) => ({ btp: 'BTP', santos_brasil: 'Santos Brasil', embraport: 'Embraport (DPW)' }[t] || t || '—');
 
   async function api(caminho) {
@@ -140,7 +151,7 @@
     $('#cartoes').innerHTML = [
       c(r.total, 'atracações', '', ''),
       c(r.porSituacao.previsto, 'previstas', 'situacao', 'previsto'),
-      c(r.porSituacao.atracacao_atrasada, 'atracação atrasada', 'situacao', 'atracacao_atrasada'),
+      c(r.porSituacao.aguardando_atracacao, 'aguardando atracação', 'situacao', 'aguardando_atracacao'),
       c(r.porSituacao.atracado, 'atracados', 'situacao', 'atracado'),
       c(r.porGate.aberto, 'gates abertos', 'gate', 'aberto'),
       c(r.porGate.aguardando, 'gates a abrir', 'gate', 'aguardando'),
@@ -155,31 +166,33 @@
     const nome = (i) => `<strong>${esc(i.navio)}</strong> <span class="suave">v. ${esc(i.viagem)} · ${esc(terminal(i.terminal))}</span>`;
     $('#proximas').innerHTML = [
       bloco('Deadlines (gate aberto)', r.deadlines, (i) => `${data(i.deadline)} · ${nome(i)} <span class="suave">faltam ${i.horasRestantes} h</span>`),
-      bloco('Aberturas de gate', r.aberturasGate, (i) => `${data(i.prevAberturaGate)} · ${nome(i)}`),
+      bloco('Aberturas de gate', r.aberturasGate, (i) => `${data(i.prevista)} · ${i.tipo} · ${nome(i)}`),
       bloco('Chegadas', r.chegadas, (i) => `${data(i.prevChegada)} · ${nome(i)}`),
       bloco('Atracações', r.atracacoes, (i) => `${data(i.prevAtracacao)} · ${nome(i)}`),
       bloco('Liberações de importação', r.liberacoes, (i) => `${data(i.prevista)} · ${i.tipo} · ${nome(i)}`),
-      bloco('Atrasados', r.atrasados, (i) => `${nome(i)} ${i.situacao.navio === 'atracacao_atrasada' ? pill('atracacao_atrasada') : ''}${i.situacao.dry === 'atrasado' ? pill('atrasado', 'dry atrasado') : ''}${i.situacao.reefer === 'atrasado' ? pill('atrasado', 'reefer atrasado') : ''}`),
+      bloco('Aguardando atracação', r.aguardandoAtracacao, (i) => `${nome(i)} <span class="suave">há ${Math.round(i.horasDeEspera)} h (chegada ${data(i.esperadoEm)})</span>`),
+      ...(r.atrasados.length ? [bloco('Liberações atrasadas', r.atrasados, (i) => `${nome(i)} ${i.situacao.dry === 'atrasado' ? pill('atrasado', 'dry') : ''}${i.situacao.reefer === 'atrasado' ? pill('atrasado', 'reefer') : ''}`)] : []),
     ].join('');
   }
 
   function mostrarTabela(navios) {
     const linhas = navios.map((n) => `<tr>
-        <td><strong>${esc(n.navio)}</strong><div class="suave">v. ${esc(n.viagem)} · ${esc(n.armador)}</div></td>
+        <td><strong>${esc(n.navio)}</strong>${ajustes(n)}<div class="suave">v. ${esc(n.viagem)} · ${esc(n.armador)}${n.armadorOrigem && n.armadorOrigem !== 'dss' ? ` <span title="armador deduzido pelo ${esc(n.armadorOrigem)}">(deduzido)</span>` : ''}</div></td>
         <td>${esc(terminal(n.terminal))}</td>
-        <td>${pill(n.situacao.navio)}</td>
+        <td>${pill(n.situacao.navio)}${n.horas.esperaAtracacao ? `<div class="suave">há ${Math.round(n.horas.esperaAtracacao)} h</div>` : ''}</td>
         <td>${data(n.datas.prevChegada)}</td>
         <td>${prevReal(n.datas.prevAtracacao, n.datas.atracacao, n.horas.atrasoAtracacao)}</td>
         <td>${data(n.datas.prevSaida)}${n.horas.estadia !== null ? `<div class="suave">${n.horas.estadia} h no berço</div>` : ''}</td>
         <td>${pill(n.situacao.gate)}<div>${prevReal(n.datas.prevAberturaGate, n.datas.aberturaGate, n.horas.atrasoAberturaGate)}</div></td>
+        <td>${pill(n.situacao.gateReefer)}<div>${prevReal(n.datas.prevAberturaGateReefer, n.datas.aberturaGateReefer)}</div></td>
         <td>${data(n.datas.deadline)}${n.horas.ateDeadline !== null && n.situacao.gate === 'aberto' ? `<div class="suave">faltam ${n.horas.ateDeadline} h</div>` : ''}</td>
         <td>${pill(n.situacao.dry)}<div>${prevReal(n.datas.prevLiberacaoDry, n.datas.liberacaoDry, n.horas.atrasoLiberacaoDry)}</div></td>
         <td>${pill(n.situacao.reefer)}<div>${prevReal(n.datas.prevLiberacaoReefer, n.datas.liberacaoReefer, n.horas.atrasoLiberacaoReefer)}</div></td>
       </tr>`).join('');
     $('#tabela').innerHTML = `<div class="tabela"><table><thead><tr>
         <th>Navio</th><th>Terminal</th><th>Situação</th><th>Chegada prev.</th><th>Atracação</th><th>Saída prev.</th>
-        <th>Abertura de gate</th><th>Deadline</th><th>Liberação dry</th><th>Liberação reefer</th>
-      </tr></thead><tbody>${linhas || '<tr><td colspan="10">Nenhuma atracação com esses filtros.</td></tr>'}</tbody></table></div>`;
+        <th>Gate dry</th><th>Gate reefer</th><th>Deadline</th><th>Liberação dry</th><th>Liberação reefer</th>
+      </tr></thead><tbody>${linhas || '<tr><td colspan="11">Nenhuma atracação com esses filtros.</td></tr>'}</tbody></table></div>`;
   }
 
   $('#filtros').addEventListener('submit', (ev) => { ev.preventDefault(); carregar(); });

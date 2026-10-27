@@ -2,39 +2,30 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { criarCliente, normalizar, filtrar, resumir, dataUtc } = require('../src/dss');
+const { criarCliente, normalizar, normalizarTodos, filtrar, resumir, dataUtc } = require('../src/dss');
 const { criarServidor } = require('../src/server');
 
 const H = 3600e3;
 const AGORA = Date.parse('2026-10-27T15:00:00Z');
 const utc = (horas) => new Date(AGORA + horas * H).toISOString().replace('T', ' ').slice(0, 19);
 
-// Registro no formato exato da API (todos os campos), com datas relativas a AGORA.
-function registro(navio, viagem, terminal, d = {}, extra = {}) {
+// Registro no formato exato da API, com datas relativas a AGORA (em horas).
+function registro(navio, viagem, terminal, d = {}, armador = 'MSC') {
   const campos = {
     data_deadline: '', data_atracacao: '', data_prev_chegada: '', data_prev_atracacao: '', data_prev_saida: '',
     data_prev_abertura_gate: '', data_abertura_gate: '', data_prev_lib_dry: '', data_lib_dry: '', data_prev_lib_reefer: '', data_lib_reefer: '',
   };
-  for (const [k, v] of Object.entries(d)) campos[`data_${k}`] = v === null ? '' : utc(v);
-  return { navio, nro_viagem: viagem, armador: extra.armador || 'MSC', terminal, timezone: 'UTC', ...campos };
+  for (const [k, v] of Object.entries(d)) campos[`data_${k}`] = typeof v === 'string' ? v : utc(v);
+  return { navio, nro_viagem: viagem, armador, terminal, timezone: 'UTC', ...campos };
 }
 
-const REGISTROS = [
-  // previsto, gate aberto (abertura real), deadline em 20 h
-  registro('MSC INSA', 'NA642R', 'btp', { prev_chegada: -100, prev_atracacao: 30, prev_saida: 55, prev_abertura_gate: -80, abertura_gate: -78, deadline: 20, prev_lib_dry: 60, prev_lib_reefer: 56 }),
-  // atracação atrasada (prevista há 5 h, não atracou), gate encerrado
-  registro('XIAMEN EXPRESS', 'NA641R', 'btp', { prev_chegada: -150, prev_atracacao: -5, prev_saida: 20, prev_abertura_gate: -200, deadline: -60 }, { armador: 'HLC' }),
-  // atracado (2 h depois do previsto), liberação dry feita, reefer atrasada
-  registro('MAERSK LOTA', '644N', 'santos_brasil', { prev_chegada: -40, prev_atracacao: -20, atracacao: -18, prev_saida: 10, deadline: -50, prev_lib_dry: -8, lib_dry: -7, prev_lib_reefer: -6 }, { armador: 'MAE' }),
-  // encerrado (atracou e a saída prevista já passou)
-  registro('MSC GIULIA', 'QI642R', 'embraport', { prev_atracacao: -60, atracacao: -58, prev_saida: -2, deadline: -90 }),
-  // previsto distante, gate aguardando abertura em 30 h
-  registro('COPIAPO', 'MM643R', 'btp', { prev_chegada: 40, prev_atracacao: 46, prev_saida: 70, prev_abertura_gate: 30, deadline: 44 }, { armador: 'HLC' }),
-  // sem datas de gate
-  registro('NAVIO SEM GATE', '1A', 'embraport', { prev_atracacao: 200 }),
-];
-
-const ok = (registros = REGISTROS) => ({ status: 200, apiVersion: 1, mensagemErro: '', timezone: 'UTC', qtd_registros: registros.length, registros });
+// Amostras reais devolvidas pelo DSS em 27/10/2026 (uma de cada terminal).
+const REAIS = {
+  btp: { armador: 'MSC', data_abertura_gate: '2026-10-13 16:00:00', data_atracacao: '2026-10-16 17:47:00', data_deadline: '2026-10-15 13:00:00', data_lib_dry: '', data_lib_reefer: '2026-10-13 16:00:00', data_prev_abertura_gate: '', data_prev_atracacao: '', data_prev_chegada: '2026-10-15 10:00:00', data_prev_lib_dry: '', data_prev_lib_reefer: '', data_prev_saida: '2026-10-17 20:00:00', navio: 'MSC URSULA VI', nro_viagem: 'UA641R', terminal: 'btp', timezone: 'UTC' },
+  santos: { armador: 'UX641R', data_abertura_gate: '2026-10-15 22:00:00', data_atracacao: '', data_deadline: '2026-10-16 15:00:00', data_lib_dry: '', data_lib_reefer: '2026-10-15 22:00:00', data_prev_abertura_gate: '', data_prev_atracacao: '', data_prev_chegada: '2026-10-21 04:00:00', data_prev_lib_dry: '', data_prev_lib_reefer: '', data_prev_saida: '', navio: 'MSC PERLE', nro_viagem: 'UX641R', terminal: 'santos_brasil', timezone: 'UTC' },
+  santos2: { armador: 'BRA030N99', data_abertura_gate: '2026-10-16 21:00:00', data_atracacao: '', data_deadline: '2026-10-20 15:00:00', data_lib_dry: '', data_lib_reefer: '2026-10-16 21:00:00', data_prev_abertura_gate: '', data_prev_atracacao: '', data_prev_chegada: '2026-10-21 13:30:00', data_prev_lib_dry: '', data_prev_lib_reefer: '', data_prev_saida: '', navio: 'MERCOSUL GUARUJA', nro_viagem: 'BRA030N99', terminal: 'santos_brasil', timezone: 'UTC' },
+  embraport: { armador: 'COS', data_abertura_gate: '', data_atracacao: '2026-12-05 10:00:00', data_deadline: '', data_lib_dry: '', data_lib_reefer: '', data_prev_abertura_gate: '', data_prev_atracacao: '', data_prev_chegada: '2026-10-12 09:00:00', data_prev_lib_dry: '', data_prev_lib_reefer: '', data_prev_saida: '2026-12-06 10:00:00', navio: 'COSCO SHIPPING CHANG SHENG', nro_viagem: '010', terminal: 'embraport', timezone: 'UTC' },
+};
 
 test('datas UTC do DSS', () => {
   assert.equal(dataUtc('2024-07-20 18:00:00'), '2024-07-20T18:00:00.000Z');
@@ -43,56 +34,111 @@ test('datas UTC do DSS', () => {
   assert.equal(dataUtc('string'), null);
 });
 
-test('usa todos os campos e calcula as situações', () => {
-  const [insa, xiamen, lota, giulia, copiapo, semGate] = REGISTROS.map((r) => normalizar(r, AGORA));
-  assert.deepEqual(Object.keys(insa.datas).length, 11);
-  assert.equal(insa.terminal, 'btp');
-  assert.equal(insa.viagem, 'NA642R');
-  assert.deepEqual(insa.situacao, { navio: 'previsto', gate: 'aberto', dry: 'previsto', reefer: 'previsto' });
-  assert.equal(insa.horas.ateDeadline, 20);
-  assert.equal(insa.horas.atrasoAberturaGate, 2);
-  assert.equal(insa.horas.janelaGate, 98, 'da abertura real ao deadline');
-  assert.equal(insa.horas.estadia, 25);
+// ------------------------------------------------------------------ correções de leitura
+test('correção 1: data "real" no futuro vira previsão (gate BTP, atracação Embraport)', () => {
+  const gate = normalizar(registro('MSC INSA', 'NA642R', 'btp', { prev_chegada: -100, abertura_gate: 30, deadline: 70 }), AGORA);
+  assert.equal(gate.datas.aberturaGate, null);
+  assert.equal(gate.datas.prevAberturaGate, new Date(AGORA + 30 * H).toISOString());
+  assert.equal(gate.situacao.gate, 'aguardando', 'antes da correção aparecia como aberto');
+  assert.ok(gate.qualidade.some((q) => q.problema === 'data_real_no_futuro' && q.campo === 'data_abertura_gate'));
 
-  assert.deepEqual(xiamen.situacao, { navio: 'atracacao_atrasada', gate: 'encerrado', dry: 'sem_dado', reefer: 'sem_dado' });
-  assert.equal(xiamen.horas.ateDeadline, null);
-
-  assert.deepEqual(lota.situacao, { navio: 'atracado', gate: 'encerrado', dry: 'liberado', reefer: 'atrasado' });
-  assert.equal(lota.horas.atrasoAtracacao, 2);
-  assert.equal(lota.horas.atrasoLiberacaoDry, 1);
-
-  assert.equal(giulia.situacao.navio, 'encerrado');
-  assert.equal(copiapo.situacao.gate, 'aguardando');
-  assert.equal(semGate.situacao.gate, 'sem_dado');
-  assert.equal(copiapo.referencia, copiapo.datas.prevAtracacao);
+  const emb = normalizarTodos([REAIS.embraport, registro('X', '1', 'embraport', { atracacao: -5, prev_saida: 20 })], AGORA)[0];
+  assert.equal(emb.datas.atracacao, null);
+  assert.equal(emb.datas.prevAtracacao, '2026-12-05T10:00:00.000Z');
+  assert.equal(emb.situacao.navio, 'aguardando_atracacao', 'chegada prevista em 12/10 e ainda não atracou');
 });
 
-test('filtros por terminal, armador, navio, viagem, situação, gate e período', () => {
-  const todos = REGISTROS.map((r) => normalizar(r, AGORA));
+test('correção 2: na BTP e na Santos Brasil, lib_reefer é a abertura de gate reefer', () => {
+  const btp = normalizar(REAIS.btp, AGORA);
+  assert.equal(btp.datas.liberacaoReefer, null);
+  assert.equal(btp.datas.aberturaGateReefer, '2026-10-13T16:00:00.000Z');
+  assert.equal(btp.situacao.reefer, 'sem_dado', 'antes aparecia como "liberado"');
+  assert.equal(btp.situacao.gateReefer, 'encerrado');
+
+  const futuro = normalizar(registro('MSC INSA', 'NA642R', 'santos_brasil', { prev_chegada: 20, abertura_gate: 10, lib_reefer: 12, deadline: 40 }), AGORA);
+  assert.equal(futuro.datas.prevAberturaGateReefer, new Date(AGORA + 12 * H).toISOString());
+  assert.equal(futuro.situacao.gateReefer, 'aguardando');
+
+  const embraport = normalizar(registro('Y', '2', 'embraport', { prev_lib_reefer: 30, lib_dry: -2 }), AGORA);
+  assert.equal(embraport.situacao.reefer, 'previsto', 'na Embraport o campo continua sendo liberação de importação');
+  assert.equal(embraport.situacao.dry, 'liberado');
+});
+
+test('correção 3: sem prev_atracacao, a espera é medida pela chegada prevista', () => {
+  const lista = normalizarTodos(
+    [
+      registro('ESPERANDO', '1N', 'btp', { prev_chegada: -30, prev_saida: 40 }),
+      registro('ATRACADO', '2N', 'btp', { prev_chegada: -40, atracacao: -10, prev_saida: 15 }),
+      registro('ENCERRADO', '3N', 'btp', { prev_chegada: -80, atracacao: -60, prev_saida: -5 }),
+      registro('A CAMINHO', '4N', 'btp', { prev_chegada: 12 }),
+      registro('MSC SANTOS', '5N', 'santos_brasil', { prev_chegada: -20 }),
+    ],
+    AGORA,
+  );
+  const [esperando, atracado, encerrado, aCaminho, santos] = lista;
+  assert.equal(esperando.situacao.navio, 'aguardando_atracacao');
+  assert.equal(esperando.horas.esperaAtracacao, 30);
+  assert.equal(atracado.situacao.navio, 'atracado');
+  assert.equal(atracado.horas.atrasoAtracacao, 30, 'atracação real − chegada prevista');
+  assert.equal(encerrado.situacao.navio, 'encerrado');
+  assert.equal(aCaminho.situacao.navio, 'previsto');
+  assert.equal(santos.situacao.navio, 'chegada_passou', 'Santos Brasil não informa atracação');
+});
+
+test('correção 4: armador igual à viagem é deduzido', () => {
+  const [btp, santos, mercosul] = normalizarTodos(
+    [registro('MSC PERLE', 'UX640R', 'btp', {}, 'MSC'), REAIS.santos, REAIS.santos2, registro('NAVIO DESCONHECIDO', 'ZZ1', 'santos_brasil', {}, 'ZZ1')],
+    AGORA,
+  );
+  assert.equal(btp.armadorOrigem, 'dss');
+  assert.equal(santos.armador, 'MSC');
+  assert.equal(santos.armadorOrigem, 'mesmo navio em outro registro');
+  assert.ok(santos.qualidade.some((q) => q.problema === 'armador_igual_viagem'));
+  assert.equal(mercosul.armador, 'ALI');
+  assert.equal(mercosul.armadorOrigem, 'nome do navio');
+  const desconhecido = normalizarTodos([registro('NAVIO DESCONHECIDO', 'ZZ1', 'santos_brasil', {}, 'ZZ1')], AGORA)[0];
+  assert.equal(desconhecido.armador, null);
+});
+
+test('correção 5: datas a mais de 1 ano são descartadas como suspeitas', () => {
+  const r = normalizar(registro('FUTURISTA', '1', 'santos_brasil', { prev_chegada: 10, deadline: '2044-12-19 03:00:00' }), AGORA);
+  assert.equal(r.datas.deadline, null);
+  assert.deepEqual(r.datasSuspeitas, { data_deadline: '2044-12-19T03:00:00.000Z' });
+  assert.equal(r.situacao.gate, 'sem_dado');
+});
+
+// ------------------------------------------------------------------ filtros e resumo
+const AMOSTRA = [
+  registro('MSC INSA', 'NA642R', 'btp', { prev_chegada: -100, prev_saida: 55, abertura_gate: -78, lib_reefer: -78, deadline: 20, prev_lib_dry: 30 }),
+  registro('XIAMEN EXPRESS', 'NA641R', 'btp', { prev_chegada: -150, prev_saida: 20, abertura_gate: -200, deadline: -60 }, 'HLC'),
+  registro('MAERSK LOTA', '644N', 'embraport', { prev_chegada: -40, atracacao: -18, prev_saida: 10, deadline: -50, prev_lib_reefer: -6 }, 'MAE'),
+  registro('COPIAPO', 'MM643R', 'btp', { prev_chegada: 40, prev_saida: 70, abertura_gate: 30, lib_reefer: 32, deadline: 44 }, 'HLC'),
+  registro('MSC PERLE', 'UX641R', 'santos_brasil', { prev_chegada: 10, deadline: 30 }, 'UX641R'),
+  registro('SAN RAPHAEL MAERSK', '642N', 'btp', { prev_chegada: -80, atracacao: -49, prev_saida: 5 }, 'MAE'),
+];
+
+test('filtros', () => {
+  const todos = normalizarTodos(AMOSTRA, AGORA);
   const nomes = (q) => filtrar(todos, q).map((r) => r.navio);
-  assert.deepEqual(nomes({ terminal: 'btp' }), ['MSC INSA', 'XIAMEN EXPRESS', 'COPIAPO']);
-  assert.deepEqual(nomes({ terminal: 'santos_brasil,embraport' }), ['MAERSK LOTA', 'MSC GIULIA', 'NAVIO SEM GATE']);
-  assert.deepEqual(nomes({ armador: 'hlc' }), ['XIAMEN EXPRESS', 'COPIAPO']);
-  assert.deepEqual(nomes({ navio: 'msc' }), ['MSC INSA', 'MSC GIULIA']);
-  assert.deepEqual(nomes({ viagem: 'na641r' }), ['XIAMEN EXPRESS']);
-  assert.deepEqual(nomes({ situacao: 'atracado,encerrado' }), ['MAERSK LOTA', 'MSC GIULIA']);
-  assert.deepEqual(nomes({ gate: 'aberto' }), ['MSC INSA']);
-  assert.deepEqual(nomes({ de: new Date(AGORA).toISOString(), ate: new Date(AGORA + 72 * H).toISOString() }), ['MSC INSA', 'COPIAPO']);
+  assert.deepEqual(nomes({ terminal: 'btp' }), ['MSC INSA', 'XIAMEN EXPRESS', 'COPIAPO', 'SAN RAPHAEL MAERSK']);
+  assert.deepEqual(nomes({ armador: 'msc' }), ['MSC INSA', 'MSC PERLE'], 'armador deduzido também filtra');
+  assert.deepEqual(nomes({ situacao: 'aguardando_atracacao' }), ['MSC INSA', 'XIAMEN EXPRESS']);
+  assert.deepEqual(nomes({ gate: 'aguardando' }), ['COPIAPO', 'MSC PERLE']);
+  assert.deepEqual(nomes({ navio: 'msc', viagem: 'na642r' }), ['MSC INSA']);
 });
 
 test('resumo das próximas horas', () => {
-  const r = resumir(REGISTROS.map((x) => normalizar(x, AGORA)), { horas: 48, agora: AGORA });
-  assert.equal(r.total, 6);
-  assert.deepEqual(r.porTerminal, { btp: 3, santos_brasil: 1, embraport: 2 });
-  assert.deepEqual(r.porSituacao, { previsto: 3, atracacao_atrasada: 1, atracado: 1, encerrado: 1 });
-  assert.deepEqual(r.porGate, { aberto: 1, encerrado: 3, aguardando: 1, sem_dado: 1 });
-  assert.deepEqual(r.deadlines.map((x) => [x.navio, x.horasRestantes]), [['MSC INSA', 20]]);
-  assert.deepEqual(r.aberturasGate.map((x) => x.navio), ['COPIAPO']);
-  assert.deepEqual(r.chegadas.map((x) => x.navio), ['COPIAPO']);
-  assert.deepEqual(r.atracacoes.map((x) => x.navio), ['MSC INSA', 'COPIAPO']);
-  assert.deepEqual(r.liberacoes, [], 'liberações de MSC INSA são em 56 h e 60 h');
-  assert.deepEqual(r.atrasados.map((x) => x.navio), ['XIAMEN EXPRESS', 'MAERSK LOTA']);
-  assert.deepEqual(resumir(REGISTROS.map((x) => normalizar(x, AGORA)), { horas: 72, agora: AGORA }).liberacoes.map((x) => x.tipo), ['reefer', 'dry']);
+  const r = resumir(normalizarTodos(AMOSTRA, AGORA), { horas: 48, agora: AGORA });
+  assert.deepEqual(r.porSituacao, { aguardando_atracacao: 2, atracado: 2, previsto: 2 });
+  assert.deepEqual(r.porGate, { aberto: 1, encerrado: 2, aguardando: 2, sem_dado: 1 });
+  assert.deepEqual(r.porGateReefer, { aberto: 1, sem_dado: 4, aguardando: 1 });
+  assert.deepEqual(r.deadlines.map((x) => x.navio), ['MSC INSA']);
+  assert.deepEqual(r.aberturasGate.map((x) => `${x.navio}:${x.tipo}`), ['COPIAPO:dry', 'COPIAPO:reefer']);
+  assert.deepEqual(r.aguardandoAtracacao.map((x) => [x.navio, x.horasDeEspera]), [['XIAMEN EXPRESS', 150], ['MSC INSA', 100]]);
+  assert.deepEqual(r.liberacoes.map((x) => x.tipo), ['dry']);
+  assert.deepEqual(r.atrasados.map((x) => x.navio), ['MAERSK LOTA'], 'reefer de importação da Embraport atrasado');
+  assert.equal(r.qualidade['santos_brasil:armador_igual_viagem'], 1);
+  assert.equal(r.qualidade['btp:reefer_e_abertura_de_gate'], 2);
 });
 
 // ------------------------------------------------------------------ cliente HTTP
@@ -107,17 +153,18 @@ function fetchFalso(respostas) {
   f.chamadas = chamadas;
   return f;
 }
+const ok = (registros = AMOSTRA) => ({ status: 200, apiVersion: 1, mensagemErro: '', timezone: 'UTC', qtd_registros: registros.length, registros });
 
 test('Basic Auth (inclusive embutido na URL), cache e consulta compartilhada', async () => {
   const f = fetchFalso([{ status: 200, corpo: ok() }]);
   const c = criarCliente({ url: 'https://us%40r:s3nh%40@dss.exemplo.com/wsdss/navios/listarNavios', fetch: f, cacheSegundos: 60 });
   const [a] = await Promise.all([c.listar(), c.listar()]);
   await c.listar();
-  assert.equal(f.chamadas.length, 1, 'pedidos simultâneos e em cache não repetem a consulta');
+  assert.equal(f.chamadas.length, 1);
   assert.equal(f.chamadas[0].url, 'https://dss.exemplo.com/wsdss/navios/listarNavios');
   assert.equal(f.chamadas[0].auth, `Basic ${Buffer.from('us@r:s3nh@').toString('base64')}`);
   assert.equal(a.qtdRegistros, 6);
-  assert.equal(a.apiVersion, 1);
+  assert.equal(a.registros.find((r) => r.navio === 'MSC PERLE').armador, 'MSC', 'contexto da resposta inteira');
   await c.listar({ forcar: true });
   assert.equal(f.chamadas.length, 2);
 });
@@ -160,25 +207,18 @@ test('rotas do servidor', async () => {
   try {
     assert.equal((await get('/api/health')).corpo.dss, 'configurado');
     const navios = await get('/api/navios?terminal=btp&ordenar=deadline');
-    assert.equal(navios.corpo.total, 3);
-    assert.equal(navios.corpo.qtdRegistrosDss, 6);
-    assert.deepEqual(navios.corpo.terminais, ['btp', 'embraport', 'santos_brasil']);
-    assert.deepEqual(navios.corpo.armadores, ['HLC', 'MAE', 'MSC']);
-    const resumo = await get('/api/resumo?horas=72');
-    assert.equal(resumo.corpo.proximasHoras, 72);
-    assert.equal(resumo.corpo.total, 6);
-    const bruto = await get('/api/dss/bruto');
-    assert.equal(bruto.corpo.registros[0].nro_viagem, 'NA642R');
+    assert.equal(navios.corpo.total, 4);
+    assert.deepEqual(navios.corpo.armadores, ['HLC', 'MAE', 'MSC'], 'sem códigos de viagem no filtro de armador');
+    assert.equal((await get('/api/resumo?horas=72')).corpo.proximasHoras, 72);
+    assert.equal((await get('/api/dss/bruto')).corpo.registros[0].nro_viagem, 'NA642R');
     assert.match((await get('/')).corpo, /Portal de Navios/);
     assert.equal((await get('/api/nada')).status, 404);
     assert.equal((await fetch(`${base}/api/navios`, { method: 'POST' })).status, 405);
   } finally {
     srv.close();
   }
-
   const semDss = criarServidor(null);
   await new Promise((r) => semDss.listen(0, r));
-  const r = await fetch(`http://127.0.0.1:${semDss.address().port}/api/navios`);
-  assert.equal(r.status, 503);
+  assert.equal((await fetch(`http://127.0.0.1:${semDss.address().port}/api/navios`)).status, 503);
   semDss.close();
 });

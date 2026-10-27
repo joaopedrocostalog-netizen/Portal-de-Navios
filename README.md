@@ -15,14 +15,29 @@ Painel e API em cima da **API Portal de Navios do DSS** (TMS, módulo `tms_integ
 | `data_prev_abertura_gate`, `data_abertura_gate` | Situação do gate e atraso da abertura |
 | `data_deadline` | Fim da janela de gate; horas que faltam até o deadline |
 | `data_prev_lib_dry`, `data_lib_dry` | Liberação de importação dry: liberado, previsto ou atrasado |
-| `data_prev_lib_reefer`, `data_lib_reefer` | Liberação de importação reefer: idem |
+| `data_prev_lib_reefer`, `data_lib_reefer` | Liberação de importação reefer na Embraport; abertura de gate reefer na BTP e na Santos Brasil (ver correções) |
 | `status`, `apiVersion`, `mensagemErro`, `qtd_registros`, `timezone` | Mensagens de erro, versão e totais exibidos |
+
+### Correções de leitura
+
+Os dados reais mostram que cada terminal preenche os campos do DSS de um jeito. O portal corrige na leitura e marca cada ajuste no campo `qualidade` do registro (na página: "dados ajustados", com o detalhe ao passar o mouse):
+
+1. **Data "real" no futuro** (abertura de gate da BTP, atracação da Embraport) é tratada como prevista.
+2. **BTP e Santos Brasil gravam a abertura de gate reefer em `data_lib_reefer`.** Nesses terminais, o campo vira `aberturaGateReefer`, e a liberação reefer de importação fica vazia.
+3. **`data_prev_atracacao` não vem preenchida.** A espera pela atracação é medida a partir da chegada prevista.
+4. **Santos Brasil grava a viagem no campo `armador`.** O armador é deduzido pelo mesmo navio em outro registro ou pelo prefixo do nome (MSC, MAERSK→MAE, CMA CGM→CMA, COSCO→COS…), com `armadorOrigem` indicando a fonte.
+5. **Datas a mais de 1 ano de hoje** são descartadas e ficam em `datasSuspeitas`.
 
 ### Situações calculadas
 
-- **Navio:** `previsto` → `atracacao_atrasada` (a atracação prevista passou e o navio não atracou) → `atracado` → `encerrado` (atracou e a saída prevista já passou).
-- **Gate:** `aguardando` (antes da abertura) → `aberto` (abertura real informada ou prevista já passou, até o deadline) → `encerrado` (deadline passou). Sem datas de gate: `sem_dado`.
-- **Liberação dry e reefer:** `liberado` (há data real), `previsto`, `atrasado` (a prevista passou sem data real) ou `sem_dado`.
+- **Navio:**
+  - `previsto`;
+  - `aguardando_atracacao`: a chegada prevista passou e o navio não atracou, com as horas de espera;
+  - `chegada_passou`: o mesmo caso, num terminal que não informa atracação (hoje, a Santos Brasil);
+  - `atracado`;
+  - `encerrado`: atracou e a saída prevista já passou.
+- **Gate dry e gate reefer:** `aguardando` (antes da abertura) → `aberto` (a abertura já passou, até o deadline) → `encerrado` (deadline vencido). Sem datas: `sem_dado`.
+- **Liberação de importação dry e reefer:** `liberado`, `previsto`, `atrasado` ou `sem_dado`.
 
 ### Erros do DSS
 
