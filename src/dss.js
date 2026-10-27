@@ -168,7 +168,12 @@ function normalizar(r, agora = Date.now(), contexto = criarContexto([r])) {
   const passou = (iso) => iso && Date.parse(iso) <= agora;
   const esperadoEm = [d.prevChegada, d.prevAtracacao].find(passou) || null;
   let navio = 'previsto';
-  if (d.atracacao) navio = passou(d.prevSaida) ? 'encerrado' : 'atracado';
+  if (passou(d.prevSaida)) {
+    // Saída prevista já passou: o navio saiu, mesmo que o terminal não tenha informado a atracação
+    // (a BTP só informa atracação em parte dos navios).
+    navio = 'encerrado';
+    if (!d.atracacao) qualidade.push({ campo: 'data_atracacao', problema: 'saida_sem_atracacao' });
+  } else if (d.atracacao) navio = 'atracado';
   else if (esperadoEm) navio = contexto.terminaisComAtracacao.has(terminal) ? 'aguardando_atracacao' : 'chegada_passou';
   if (!d.prevAtracacao) qualidade.push({ campo: 'data_prev_atracacao', problema: 'campo_vazio' });
 

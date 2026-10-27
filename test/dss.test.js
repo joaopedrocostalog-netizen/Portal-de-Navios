@@ -72,10 +72,13 @@ test('correção 3: sem prev_atracacao, a espera é medida pela chegada prevista
       registro('ENCERRADO', '3N', 'btp', { prev_chegada: -80, atracacao: -60, prev_saida: -5 }),
       registro('A CAMINHO', '4N', 'btp', { prev_chegada: 12 }),
       registro('MSC SANTOS', '5N', 'santos_brasil', { prev_chegada: -20 }),
+      registro('MSC MADHU B', 'QI639R', 'btp', { prev_chegada: -203, prev_saida: -98 }),
     ],
     AGORA,
   );
-  const [esperando, atracado, encerrado, aCaminho, santos] = lista;
+  const [esperando, atracado, encerrado, aCaminho, santos, saiuSemAtracacao] = lista;
+  assert.equal(saiuSemAtracacao.situacao.navio, 'encerrado', 'saída prevista passou: não fica "aguardando" por dias');
+  assert.ok(saiuSemAtracacao.qualidade.some((q) => q.problema === 'saida_sem_atracacao'));
   assert.equal(esperando.situacao.navio, 'aguardando_atracacao');
   assert.equal(esperando.horas.esperaAtracacao, 30);
   assert.equal(atracado.situacao.navio, 'atracado');

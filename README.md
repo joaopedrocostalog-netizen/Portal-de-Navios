@@ -27,6 +27,7 @@ Os dados reais mostram que cada terminal preenche os campos do DSS de um jeito. 
 3. **`data_prev_atracacao` não vem preenchida.** A espera pela atracação é medida a partir da chegada prevista.
 4. **Santos Brasil grava a viagem no campo `armador`.** O armador é deduzido pelo mesmo navio em outro registro ou pelo prefixo do nome (MSC, MAERSK→MAE, CMA CGM→CMA, COSCO→COS…), com `armadorOrigem` indicando a fonte.
 5. **Datas a mais de 1 ano de hoje** são descartadas e ficam em `datasSuspeitas`.
+6. **Saída prevista passou sem atracação informada** (a BTP só informa atracação em parte dos navios): o navio conta como `encerrado`, e não como "aguardando atracação" há dias.
 
 ### Situações calculadas
 
@@ -35,7 +36,7 @@ Os dados reais mostram que cada terminal preenche os campos do DSS de um jeito. 
   - `aguardando_atracacao`: a chegada prevista passou e o navio não atracou, com as horas de espera;
   - `chegada_passou`: o mesmo caso, num terminal que não informa atracação (hoje, a Santos Brasil);
   - `atracado`;
-  - `encerrado`: atracou e a saída prevista já passou.
+  - `encerrado`: a saída prevista já passou.
 - **Gate dry e gate reefer:** `aguardando` (antes da abertura) → `aberto` (a abertura já passou, até o deadline) → `encerrado` (deadline vencido). Sem datas: `sem_dado`.
 - **Liberação de importação dry e reefer:** `liberado`, `previsto`, `atrasado` ou `sem_dado`.
 
