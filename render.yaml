@@ -1,7 +1,5 @@
-# Blueprint do Render: cria a API (web service) e o banco PostgreSQL de uma vez.
-# No Render: New > Blueprint > escolha este repositório.
-# Endereço e login do DSS ficam com "sync: false": o Render pede o valor na criação e
-# você pode alterar depois em  Dashboard > portal-de-navios > Environment.
+# Blueprint do Render. No Render: New > Blueprint > escolha este repositório.
+# Login do DSS fica com "sync: false": o Render pede na criação; depois, em portal-de-navios > Environment.
 
 services:
   - type: web
@@ -21,18 +19,5 @@ services:
         sync: false
       - key: DSS_SENHA
         sync: false
-      - key: DIAS_PADRAO
-        value: "7"
-      - key: INTERVALO_TEMPO_REAL_MS
-        value: "60000"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: portal-de-navios-db
-          property: connectionString
-
-databases:
-  - name: portal-de-navios-db
-    plan: free
-    region: virginia
-    databaseName: portal_navios
-    user: portal_navios
+      - key: CACHE_SEGUNDOS
+        value: "60"

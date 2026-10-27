@@ -1,160 +1,93 @@
 # Portal de Navios
 
-API que **prevê a entrada de contêineres a partir das atracações** informadas pela API **Portal de Navios do DSS** (TMS, módulo `tms_integr_portal_navios`).
+Painel e API em cima da **API Portal de Navios do DSS** (TMS, módulo `tms_integr_portal_navios`): atracações dos terminais BTP, Santos Brasil e Embraport, janelas de gate para a entrada de contêineres de exportação e liberações de importação. Sem banco de dados e sem dependências externas.
 
-Segundo a documentação do DSS, essas atracações são capturadas dos portais dos terminais (BTP, Santos Brasil e Embraport). Como complemento, dá para **importar a planilha da BTP** (botão Download do Portal do Cliente BTP), que traz chegada e saída reais, navio *na barra*, berço, RAP e serviço. Os contêineres monitorados ficam num cadastro próprio (PostgreSQL).
+## A API do DSS e como ela é usada
 
-## Como funciona
+`GET https://costalog.dssinformatica.com.br/wsdss/navios/listarNavios` com `Authorization: Basic` (usuário de integração do DSS). Todas as datas vêm em UTC (`AAAA-MM-DD HH:MM:SS`).
 
-1. O DSS devolve as atracações por terminal: chegada e atracação previstas, atracação real, saída prevista, deadline, abertura de gate e liberação de dry e reefer. Todas as datas vêm em UTC (`AAAA-MM-DD HH:MM:SS`); a API devolve em ISO 8601 com `Z`.
-2. Entram na janela da previsão:
-   - as atracações previstas entre agora (com 1 dia de tolerância para atrasos) e o fim do período;
-   - os navios atracados cuja saída prevista ainda não passou.
-3. Você cadastra cada contêiner com **o nome do navio como aparece no DSS** e, se quiser, **a viagem**. Com a viagem, o contêiner só entra naquela viagem; sem ela, entra em qualquer viagem do navio.
-4. A previsão mostra, para cada atracação, quais contêineres monitorados vêm nela, agrupados por dia. Contêineres sem atracação na janela aparecem em `semAtracacaoNaJanela`, para conferir nome e viagem.
+| Campo do DSS | Uso no portal |
+|---|---|
+| `navio`, `nro_viagem`, `armador`, `terminal` | Identificação, filtros e contagens por terminal e armador |
+| `data_prev_chegada` | Chegadas previstas nas próximas horas |
+| `data_prev_atracacao`, `data_atracacao` | Situação do navio e atraso da atracação (real − previsto) |
+| `data_prev_saida` | Navio encerrado quando a saída prevista passa; tempo previsto no berço |
+| `data_prev_abertura_gate`, `data_abertura_gate` | Situação do gate e atraso da abertura |
+| `data_deadline` | Fim da janela de gate; horas que faltam até o deadline |
+| `data_prev_lib_dry`, `data_lib_dry` | Liberação de importação dry: liberado, previsto ou atrasado |
+| `data_prev_lib_reefer`, `data_lib_reefer` | Liberação de importação reefer: idem |
+| `status`, `apiVersion`, `mensagemErro`, `qtd_registros`, `timezone` | Mensagens de erro, versão e totais exibidos |
 
-## Planilha da BTP
+### Situações calculadas
 
-No [Portal do Cliente BTP › Lista de atracação](https://portaldocliente.btp.com.br/sistemas/processos-logisticos/ConsultasLivres/listaatracacaoindex), clique em **Download** e importe o arquivo pela página inicial (ou `POST /api/btp/planilha`).
+- **Navio:** `previsto` → `atracacao_atrasada` (a atracação prevista passou e o navio não atracou) → `atracado` → `encerrado` (atracou e a saída prevista já passou).
+- **Gate:** `aguardando` (antes da abertura) → `aberto` (abertura real informada ou prevista já passou, até o deadline) → `encerrado` (deadline passou). Sem datas de gate: `sem_dado`.
+- **Liberação dry e reefer:** `liberado` (há data real), `previsto`, `atrasado` (a prevista passou sem data real) ou `sem_dado`.
 
-- **Formatos:** `.xlsx`, `.xls` exportado como tabela HTML (formato comum em sites) e `.csv`. O `.xls` binário antigo (Excel 97-2003) é recusado com a orientação de salvar como `.xlsx` ou CSV.
-- **Colunas** reconhecidas pelo título, em qualquer ordem: RAP, Navio, Viagem, Agência, Dt. Prev. Chegada, Dt. Chegada, Dt. Prev. Atrac., Dt. Atracação, Dt. Prev. Saída, Dt. Saída, Abertura de Gate Dry, Abertura de Gate Reefer, Dead-Line, Serviço e Berço.
-- **Horário:** a BTP usa o horário de Brasília; as datas são convertidas para UTC, como as do DSS.
-- **Status**, com a mesma regra da tela da BTP: tem saída → *desatracado*; tem atracação → *atracado*; tem chegada → *na barra*; só previsões → *previsto*.
-- **Na previsão,** a planilha mais recente complementa cada atracação do terminal BTP (status, berço, RAP, chegada e saída reais). Se o DSS estiver indisponível, a previsão usa a planilha como fonte e mostra um aviso.
-- **Comparação** (`GET /api/btp/comparacao`): cruza a planilha com as atracações `btp` do DSS por navio e viagem e aponta diferenças acima de `TOLERANCIA_HORAS` (1 h), navios com viagem diferente e navios que só aparecem de um lado.
+### Erros do DSS
 
-O site da BTP não tem API, usa proteção contra robôs (Incapsula) e reCAPTCHA. Por isso a importação é feita com o arquivo baixado, e não lendo o site automaticamente.
-
-## Publicação no Render
-
-O serviço `portal-de-navios` publica automaticamente a cada commit na branch `main`. Variáveis em **portal-de-navios › Environment**:
-
-| Variável | Obrigatória | Para quê |
-|---|---|---|
-| `DSS_URL` (ou `NAVIOS_OF_DSS`) | sim | Endereço do endpoint: `https://costalog.dssinformatica.com.br/wsdss/navios/listarNavios` |
-| `DSS_USUARIO`, `DSS_SENHA` | sim | Login do DSS (Basic Auth). Também podem ir embutidos na URL: `https://usuario:senha@host/caminho` |
-| `DSS_TOKEN` | não | Use no lugar de usuário/senha se o DSS autenticar por token (`Authorization: Bearer`) |
-| `DATABASE_URL` | recomendada | *Internal Database URL* do `portal-de-navios-db`. Sem ela, os contêineres ficam em memória e somem quando o serviço reinicia |
-| `TERMINAL_PADRAO` | não | Terminal usado quando a previsão é pedida sem filtro (ex.: `btp`) |
-| `DIAS_PADRAO` | não | Tamanho padrão da janela (7 dias) |
-| `TOLERANCIA_HORAS` | não | Diferença entre DSS e planilha da BTP que vira divergência (1 h) |
-| `VERIFICAR_FONTES` | não | `false` desliga a consulta de diagnóstico ao DSS feita ao iniciar |
-| `INTERVALO_TEMPO_REAL_MS`, `TIMEOUT_HTTP_MS`, `CORS_ORIGIN` | não | Ajustes finos |
-
-### Diagnóstico na inicialização
-
-Ao iniciar, o servidor escreve no log (aba **Logs** do Render):
-- os **nomes** das variáveis de configuração presentes (nunca os valores);
-- se `NAVIOS_OF_DSS` é uma URL (mostra só host e caminho) e o tipo de autenticação usado;
-- o resultado de uma consulta ao DSS: quantas atracações, terminais e exemplos, ou a mensagem de erro dele (401, 403, 500).
+Os códigos 400, 401, 403 e 500 chegam com a mensagem do DSS. Por exemplo, 403 significa que o cliente está sem o módulo `tms_integr_portal_navios` habilitado. Uma resposta em HTML indica que `DSS_URL` aponta para a documentação, não para o endpoint. Se o DSS falhar depois de uma consulta boa, o portal mostra a última resposta válida com um aviso.
 
 ## Endpoints
 
-| Método | Rota | Para quê |
-|---|---|---|
-| GET | `/api/health` | Status, banco em uso e se o DSS está configurado |
-| GET | `/api/previsao-entrada?dias=7&terminal=btp` | **Principal.** Atracações na janela + contêineres monitorados em cada uma |
-| GET | `/api/dss/atracacoes?terminal=btp` | Todas as atracações do DSS, normalizadas |
-| POST | `/api/btp/planilha?nome=arquivo.xlsx` | Importa a planilha da BTP (o corpo é o próprio arquivo, até 10 MB) |
-| GET | `/api/btp/lineup` | Última planilha importada (registros em UTC e contagem por status) |
-| GET | `/api/btp/comparacao?tolerancia=1` | Planilha da BTP × DSS |
-| POST | `/api/conteineres` | Cadastra ou atualiza um contêiner monitorado |
-| GET | `/api/conteineres` | Lista os monitorados (`?situacao=monitorando`) |
-| GET | `/api/conteineres/{numero}` | Detalhe de um contêiner |
-| DELETE | `/api/conteineres/{numero}` | Para de monitorar |
-| WS | `/ws` | Previsão em tempo real |
+| Rota | Para quê |
+|---|---|
+| `GET /` | Painel: cartões por situação, próximas 48 h (deadlines, aberturas de gate, chegadas, atracações, liberações, atrasos) e tabela completa com filtros |
+| `GET /api/navios` | Atracações normalizadas com datas, situações e horas calculadas |
+| `GET /api/resumo?horas=48` | Contagens por terminal, armador, situação e gate, mais as listas das próximas horas |
+| `GET /api/dss/bruto` | Resposta original do DSS, sem tratamento (consulta na hora) |
+| `GET /api/health` | Status |
 
-`/api/previsao-entrada` e `/api/dss/atracacoes` aceitam `?incluirBruto=true` para anexar a resposta original do DSS (para conferir o que ele devolve).
+Filtros aceitos em `/api/navios` e `/api/resumo`:
+- `terminal` (`btp`, `santos_brasil`, `embraport`; aceita vários separados por vírgula);
+- `armador`, `navio` (busca por parte do nome) e `viagem`;
+- `situacao` e `gate`;
+- `de` e `ate` (ISO 8601, sobre a data de atracação real ou prevista);
+- `ordenar` (`referencia`, `chegada`, `atracacao`, `deadline` ou `navio`);
+- `atualizar=true`, que ignora o cache.
 
-Erros do DSS chegam com a mensagem dele: 401 (usuário/senha), 403 (cliente sem o módulo `tms_integr_portal_navios`) e 500 (falha no TMS) viram **502** na nossa API, com `erro` e `detalhes`.
-
-### Cadastrar contêiner
-
-```bash
-curl -X POST https://portal-de-navios.onrender.com/api/conteineres \
-  -H 'content-type: application/json' \
-  -d '{"numero":"MSCU1234566","armador":"MSCU","navioNome":"MSC INSA","navioViagem":"NA642R","perigoso":false}'
-```
-
-Campos: `numero` (obrigatório, 4 letras + 7 dígitos), `navioNome` (obrigatório no primeiro cadastro), `navioViagem`, `armador` (SCAC ou `AUTO`), `descricao`, `perigoso`, `classeRisco`, `situacao` (`monitorando`, `entregue` ou `arquivado`). Enviar de novo o mesmo número atualiza só os campos enviados. A resposta informa se o dígito verificador ISO 6346 confere (`digitoVerificadorValido`).
-
-Na página inicial, o botão **Usar navio** da previsão preenche navio e viagem no formulário de cadastro.
-
-### Previsão (resposta resumida)
+Exemplo de item de `/api/navios`:
 
 ```json
 {
-  "terminal": "btp",
-  "timezone": "UTC",
-  "janela": { "inicio": "…", "fim": "…", "dias": 7 },
-  "fonte": "dss",
-  "resumo": {
-    "totalNavios": 14,
-    "atracados": 6,
-    "previstos": 8,
-    "naviosComConteineresMonitorados": 2,
-    "totalConteineresPrevistos": 3,
-    "porDia": { "2026-10-28": { "navios": 3, "conteineres": 2 } }
+  "navio": "MSC INSA", "viagem": "NA642R", "armador": "MSC", "terminal": "btp", "timezone": "UTC",
+  "datas": {
+    "prevChegada": "2026-10-22T16:00:00.000Z", "prevAtracacao": "2026-10-27T19:00:00.000Z", "atracacao": null,
+    "prevSaida": "2026-10-28T20:00:00.000Z", "prevAberturaGate": "2026-10-24T13:00:00.000Z", "aberturaGate": "2026-10-24T13:00:00.000Z",
+    "deadline": "2026-10-25T12:00:00.000Z", "prevLiberacaoDry": null, "liberacaoDry": null, "prevLiberacaoReefer": null, "liberacaoReefer": null
   },
-  "navios": [
-    {
-      "navio": "MSC INSA", "viagem": "NA642R", "armador": "MSC", "terminal": "btp",
-      "situacao": "previsto",
-      "chegada": "2026-10-22T16:00:00.000Z",
-      "datas": {
-        "deadline": "2026-10-25T12:00:00.000Z", "prevChegada": "2026-10-22T16:00:00.000Z",
-        "prevAtracacao": "2026-10-27T19:00:00.000Z", "atracacao": null, "prevSaida": "2026-10-28T20:00:00.000Z",
-        "prevAberturaGate": "…", "aberturaGate": "…",
-        "prevLiberacaoDry": "…", "liberacaoDry": null, "prevLiberacaoReefer": "…", "liberacaoReefer": null
-      },
-      "totalConteineres": 1,
-      "conteineres": [{ "numero": "MSCU1234566", "armador": "MSCU", "perigoso": false }]
-    }
-  ],
-  "semAtracacaoNaJanela": []
+  "situacao": { "navio": "previsto", "gate": "encerrado", "dry": "sem_dado", "reefer": "sem_dado" },
+  "horas": { "atrasoAtracacao": null, "atrasoAberturaGate": 0, "atrasoLiberacaoDry": null, "atrasoLiberacaoReefer": null, "ateDeadline": null, "janelaGate": 23, "estadia": 25 },
+  "referencia": "2026-10-27T19:00:00.000Z"
 }
 ```
 
-### Tempo real (WebSocket)
+## Configuração (Render › portal-de-navios › Environment)
 
-```js
-const ws = new WebSocket('wss://portal-de-navios.onrender.com/ws');
-ws.onopen = () => ws.send(JSON.stringify({ acao: 'acompanhar-previsao', dias: 7, terminal: 'btp' }));
-// para parar: { acao: 'parar', chave: 'previsao:btp:7' }
-ws.onmessage = (m) => console.log(JSON.parse(m.data)); // { tipo: 'atualizacao', chave, em, dados }
-```
+| Variável | Para quê |
+|---|---|
+| `DSS_URL` | `https://costalog.dssinformatica.com.br/wsdss/navios/listarNavios` |
+| `DSS_USUARIO`, `DSS_SENHA` | Usuário de integração do DSS |
+| `DSS_TOKEN` | Só se o DSS autenticar por token em vez de usuário e senha |
+| `CACHE_SEGUNDOS` | Por quanto tempo a resposta do DSS é reaproveitada (60 s) |
 
-Cada assunto é consultado uma vez por `INTERVALO_TEMPO_REAL_MS`, não importa quantos clientes estejam ouvindo, para não sobrecarregar o DSS.
+Ao iniciar, o servidor escreve no log o endpoint (sem senha), o tipo de login e o resultado de uma consulta de teste ao DSS.
 
 ## Rodar localmente
 
-Requer Node 20+.
-
 ```bash
-npm install
-cp .env.example .env   # preencha NAVIOS_OF_DSS, DSS_USUARIO e DSS_SENHA
+cp .env.example .env   # preencha DSS_USUARIO e DSS_SENHA
 npm start              # http://localhost:3000
 npm test
 ```
 
+Requer Node 20+. Não há pacotes para instalar.
+
 ## Estrutura
 
 ```
-src/
-  server.js              inicia HTTP + WebSocket e faz o diagnóstico do DSS
-  app.js                 rotas da API (http nativo do Node)
-  realtime.js            WebSocket /ws
-  config.js              variáveis de ambiente
-  util.js                validações e dígito verificador ISO 6346
-  db/schema.sql          tabelas conteineres e importacoes_btp
-  db/index.js            armazenamento PostgreSQL ou memória
-  services/dss.js        API Portal de Navios do DSS
-  services/btp.js        planilha da BTP: colunas, datas, status e comparação com o DSS
-  services/planilha.js   leitura de .xlsx, .xls (HTML) e .csv sem dependências
-  services/previsao.js   previsão de entrada
-  services/http.js       chamada HTTP com tempo limite
-public/index.html        página para usar a API
-test/arquivos/           planilhas de exemplo da BTP nos formatos aceitos
-render.yaml              blueprint do Render
+src/dss.js         cliente da API do DSS, normalização, situações, filtros e resumo
+src/server.js      rotas HTTP e página
+public/index.html  painel
+test/dss.test.js   testes com o DSS simulado
 ```

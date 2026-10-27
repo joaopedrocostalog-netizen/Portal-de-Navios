@@ -6,284 +6,194 @@
   <title>Portal de Navios</title>
   <style>
     :root {
-      --fundo: #f6f7f9; --cartao: #ffffff; --texto: #1c2430; --suave: #5b6675; --borda: #dfe3e8;
-      --destaque: #0b6e99; --destaque-texto: #ffffff; --alerta-fundo: #fff4e0; --alerta-texto: #7a4b00;
-      --erro: #b42318; --ok-fundo: #e7f6ec; --ok-texto: #1a6b37;
+      --fundo: #f6f7f9; --cartao: #fff; --texto: #1c2430; --suave: #5b6675; --borda: #dfe3e8; --destaque: #0b6e99; --destaque-texto: #fff;
+      --erro: #b42318; --c-cinza: #eceff3; --t-cinza: #3d4654; --c-azul: #e3edfb; --t-azul: #1f4f8f; --c-amarelo: #fbf3c4; --t-amarelo: #6b5600;
+      --c-laranja: #ffe3c7; --t-laranja: #7a3d00; --c-verde: #dcf3e2; --t-verde: #1d6236; --c-vermelho: #fde2e0; --t-vermelho: #8f1f17;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --fundo: #12161c; --cartao: #1a2029; --texto: #e6e9ee; --suave: #9aa5b4; --borda: #2c3542;
-        --destaque: #3fa3d1; --destaque-texto: #0b1218; --alerta-fundo: #3a2a0c; --alerta-texto: #f5cf8a;
-        --erro: #ff8a7a; --ok-fundo: #12321f; --ok-texto: #8fdcaa;
+        --fundo: #12161c; --cartao: #1a2029; --texto: #e6e9ee; --suave: #9aa5b4; --borda: #2c3542; --destaque: #3fa3d1; --destaque-texto: #0b1218;
+        --erro: #ff8a7a; --c-cinza: #262d38; --t-cinza: #c3cad4; --c-azul: #1f2f4a; --t-azul: #b9d1f5; --c-amarelo: #3f3708; --t-amarelo: #f3e39a;
+        --c-laranja: #4a2c0c; --t-laranja: #ffcf9f; --c-verde: #163323; --t-verde: #a6e3bb; --c-vermelho: #43191a; --t-vermelho: #ffb9b2;
       }
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--fundo); color: var(--texto); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-    main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
-    h1 { font-size: 22px; margin: 0 0 4px; }
-    h2 { font-size: 17px; margin: 0 0 12px; }
-    p.sub { color: var(--suave); margin: 0 0 20px; }
-    section { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 14px; }
+    h1 { font-size: 21px; margin: 0; }
+    h2 { font-size: 15px; margin: 0 0 8px; }
+    .suave { color: var(--suave); font-size: 13px; }
+    .erro { color: var(--erro); }
+    section { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+    .cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+    .cartoes button { text-align: left; background: var(--cartao); color: var(--texto); border: 1px solid var(--borda); border-radius: 8px; padding: 9px 11px; cursor: pointer; font: inherit; }
+    .cartoes button:hover { border-color: var(--destaque); }
+    .cartoes strong { display: block; font-size: 22px; }
+    .colunas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+    .colunas ul { margin: 0; padding-left: 18px; }
+    .colunas li { margin-bottom: 3px; }
     form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
-    form + form { margin-top: 10px; }
-    label { display: flex; flex-direction: column; font-size: 13px; color: var(--suave); gap: 4px; }
-    label.marcar { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 8px; color: var(--texto); font-size: 14px; }
-    input, select { font: inherit; padding: 7px 9px; border: 1px solid var(--borda); border-radius: 6px; background: var(--fundo); color: var(--texto); min-width: 0; }
-    button { font: inherit; padding: 8px 14px; border: 0; border-radius: 6px; background: var(--destaque); color: var(--destaque-texto); cursor: pointer; }
-    button.secundario { background: transparent; color: var(--destaque); border: 1px solid var(--borda); }
-    button.pequeno { padding: 3px 9px; font-size: 13px; }
-    .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; }
-    .pill.ok { background: var(--ok-fundo); color: var(--ok-texto); }
-    .pill.alerta { background: var(--alerta-fundo); color: var(--alerta-texto); }
-    .tabela { overflow-x: auto; margin-top: 12px; }
-    table { border-collapse: collapse; width: 100%; font-size: 14px; }
-    th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--borda); vertical-align: top; }
-    th { color: var(--suave); font-weight: 500; }
-    .erro { color: var(--erro); margin-top: 8px; }
-    .resumo { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
-    .resumo div { border: 1px solid var(--borda); border-radius: 8px; padding: 8px 12px; }
-    .resumo strong { display: block; font-size: 20px; }
-    details { margin-top: 10px; }
-    pre { background: var(--fundo); border: 1px solid var(--borda); border-radius: 6px; padding: 10px; overflow: auto; max-height: 420px; font-size: 12px; }
-    .muted { color: var(--suave); font-size: 13px; }
-    .pill.st-previsto { background: #e8eefc; color: #2c3e7a; }
-    .pill.st-na_barra { background: #fbf7c2; color: #5c5300; }
-    .pill.st-atracado { background: #ffe1c2; color: #7a3d00; }
-    .pill.st-desatracado { background: #d9f5d9; color: #1d5c1d; }
-    @media (prefers-color-scheme: dark) {
-      .pill.st-previsto { background: #23305a; color: #c9d6ff; }
-      .pill.st-na_barra { background: #4a4300; color: #fff6a6; }
-      .pill.st-atracado { background: #5a3000; color: #ffd2a6; }
-      .pill.st-desatracado { background: #1d3d1d; color: #b7efb7; }
-    }
+    label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--suave); }
+    input, select { font: inherit; padding: 6px 8px; border: 1px solid var(--borda); border-radius: 6px; background: var(--fundo); color: var(--texto); }
+    button.acao { font: inherit; padding: 7px 13px; border: 0; border-radius: 6px; background: var(--destaque); color: var(--destaque-texto); cursor: pointer; }
+    button.leve { font: inherit; padding: 6px 11px; border: 1px solid var(--borda); border-radius: 6px; background: transparent; color: var(--destaque); cursor: pointer; }
+    .tabela { overflow-x: auto; margin-top: 10px; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 7px; border-bottom: 1px solid var(--borda); vertical-align: top; white-space: nowrap; }
+    th { color: var(--suave); font-weight: 500; position: sticky; top: 0; background: var(--cartao); }
+    .pill { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+    .cinza { background: var(--c-cinza); color: var(--t-cinza); } .azul { background: var(--c-azul); color: var(--t-azul); }
+    .amarelo { background: var(--c-amarelo); color: var(--t-amarelo); } .laranja { background: var(--c-laranja); color: var(--t-laranja); }
+    .verde { background: var(--c-verde); color: var(--t-verde); } .vermelho { background: var(--c-vermelho); color: var(--t-vermelho); }
+    a { color: var(--destaque); }
   </style>
 </head>
 <body>
 <main>
-  <h1>Portal de Navios</h1>
-  <p class="sub">Atracações do DSS e os contêineres que vêm em cada navio. Horários no fuso do seu navegador (o DSS envia em UTC).</p>
+  <header>
+    <div>
+      <h1>Portal de Navios</h1>
+      <div class="suave">API Portal de Navios do DSS · horários de Brasília</div>
+    </div>
+    <div class="suave" id="status">Carregando…</div>
+  </header>
 
   <section>
-    <h2>Situação</h2>
-    <div id="status" class="muted">Carregando…</div>
+    <div class="cartoes" id="cartoes"></div>
   </section>
 
   <section>
-    <h2>Previsão de entrada de contêineres</h2>
-    <form id="form-previsao">
-      <label>Próximos dias<input name="dias" type="number" min="1" max="30" value="7" required></label>
-      <label>Terminal (opcional)<input name="terminal" id="campo-terminal" placeholder="btp" size="8" list="lista-terminais"></label>
-      <datalist id="lista-terminais"></datalist>
-      <button type="submit">Consultar</button>
+    <h2>Próximas <span id="janela">48</span> horas</h2>
+    <div class="colunas" id="proximas"></div>
+  </section>
+
+  <section>
+    <form id="filtros">
+      <label>Terminal<select name="terminal"><option value="">Todos</option></select></label>
+      <label>Armador<select name="armador"><option value="">Todos</option></select></label>
+      <label>Navio<select name="situacao"><option value="">Todas</option><option value="previsto">Previsto</option><option value="atracacao_atrasada">Atracação atrasada</option><option value="atracado">Atracado</option><option value="encerrado">Encerrado</option></select></label>
+      <label>Gate<select name="gate"><option value="">Todos</option><option value="aguardando">Aguardando abertura</option><option value="aberto">Aberto</option><option value="encerrado">Encerrado</option><option value="sem_dado">Sem dado</option></select></label>
+      <label>Busca (navio)<input name="navio" size="14" placeholder="MSC"></label>
+      <label>Ordenar<select name="ordenar"><option value="referencia">Atracação</option><option value="chegada">Chegada</option><option value="deadline">Deadline</option><option value="navio">Navio</option></select></label>
+      <button class="acao" type="submit">Filtrar</button>
+      <button class="leve" type="button" id="limpar">Limpar</button>
+      <button class="leve" type="button" id="atualizar">Consultar o DSS agora</button>
     </form>
-    <div id="previsao"></div>
-  </section>
-
-  <section>
-    <h2>Planilha da BTP</h2>
-    <p class="muted">No <a href="https://portaldocliente.btp.com.br/sistemas/processos-logisticos/ConsultasLivres/listaatracacaoindex" target="_blank" rel="noopener">Portal do Cliente BTP › Lista de atracação</a>, clique em <strong>Download</strong> e importe o arquivo aqui (.xlsx, .xls exportado pelo site ou .csv). A BTP traz o que o DSS não tem: chegada e saída reais, navio <em>na barra</em>, berço, RAP e serviço.</p>
-    <form id="form-btp">
-      <label>Arquivo<input type="file" name="arquivo" accept=".xlsx,.xls,.csv,.txt,.html" required></label>
-      <button type="submit">Importar planilha</button>
-      <button type="button" class="secundario" id="btn-comparar">Comparar com o DSS</button>
-    </form>
-    <div id="btp"></div>
-    <div id="comparacao"></div>
-  </section>
-
-  <section>
-    <h2>Cadastrar contêiner</h2>
-    <p class="muted">Informe o navio como aparece no DSS. A viagem é opcional: com ela, o contêiner só entra naquela viagem. O botão "Usar navio" na previsão preenche os dois.</p>
-    <form id="form-cadastro">
-      <label>Número<input name="numero" placeholder="MSCU1234566" maxlength="13" size="14" required></label>
-      <label>Armador (SCAC)<input name="armador" value="AUTO" maxlength="4" size="6"></label>
-      <label>Navio<input name="navioNome" id="campo-navio" size="18" required></label>
-      <label>Viagem<input name="navioViagem" id="campo-viagem" size="9"></label>
-      <label>Descrição<input name="descricao" size="16"></label>
-      <label class="marcar"><input type="checkbox" name="perigoso"> Carga perigosa</label>
-      <label>Classe de risco<input name="classeRisco" size="10"></label>
-      <button type="submit">Cadastrar</button>
-    </form>
-    <div id="cadastro"></div>
-  </section>
-
-  <section>
-    <h2>Contêineres monitorados</h2>
-    <button type="button" class="secundario" id="btn-lista">Atualizar lista</button>
-    <div id="lista"></div>
+    <div id="tabela"></div>
+    <p class="suave">Resposta original: <a href="/api/dss/bruto" target="_blank">/api/dss/bruto</a> · API: <a href="/api/navios" target="_blank">/api/navios</a> · <a href="/api/resumo" target="_blank">/api/resumo</a></p>
   </section>
 </main>
 
 <script>
   const $ = (s) => document.querySelector(s);
   const esc = (v) => String(v ?? '—').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const data = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
-  const prevReal = (prev, real) => real ? `${data(real)} <span class="pill ok">feito</span>` : prev ? `${data(prev)} <span class="muted">prev.</span>` : '—';
+  const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const data = (iso) => (iso ? fmt.format(new Date(iso)).replace(',', '') : '—');
+  const ROTULO = {
+    previsto: ['Previsto', 'azul'], atracacao_atrasada: ['Atracação atrasada', 'vermelho'], atracado: ['Atracado', 'laranja'], encerrado: ['Encerrado', 'cinza'],
+    aguardando: ['Aguardando', 'azul'], aberto: ['Aberto', 'verde'], sem_dado: ['Sem dado', 'cinza'], liberado: ['Liberado', 'verde'], atrasado: ['Atrasado', 'vermelho'],
+  };
+  const pill = (v, rotulo) => { const [t, c] = ROTULO[v] || [v, 'cinza']; return `<span class="pill ${c}">${esc(rotulo || t)}</span>`; };
+  const h = (n) => (!n ? '' : ` <span class="suave">(${n > 0 ? '+' : ''}${n} h)</span>`);
+  const prevReal = (prev, real, atraso) => (real ? `${data(real)}${h(atraso)}` : prev ? `<span class="suave">prev.</span> ${data(prev)}` : '—');
+  const terminal = (t) => ({ btp: 'BTP', santos_brasil: 'Santos Brasil', embraport: 'Embraport (DPW)' }[t] || t || '—');
 
-  async function api(caminho, opcoes) {
-    const res = await fetch(caminho, { headers: { 'content-type': 'application/json' }, ...opcoes });
-    const corpo = res.status === 204 ? null : await res.json();
-    if (!res.ok) throw new Error(corpo?.erro || `HTTP ${res.status}`);
+  async function api(caminho) {
+    const res = await fetch(caminho);
+    const corpo = await res.json();
+    if (!res.ok) throw new Error(corpo.erro || `HTTP ${res.status}`);
     return corpo;
   }
-  const erro = (alvo, e) => { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; };
-  const bruto = (obj) => `<details><summary>Ver JSON completo</summary><pre>${esc(JSON.stringify(obj, null, 2))}</pre></details>`;
 
-  const NOMES_STATUS = { previsto: 'previsto', na_barra: 'na barra', atracado: 'atracado', desatracado: 'desatracado' };
-  const pillStatus = (st) => `<span class="pill st-${esc(st)}">${esc(NOMES_STATUS[st] || st)}</span>`;
-
-  function mostrarResumoBtp(c) {
-    const st = c.porStatus;
-    return `<p><span class="pill ok">Planilha</span> ${esc(c.nomeArquivo || 'sem nome')} · importada em ${data(c.importadoEm)} · ${c.total} navios: ${pillStatus('previsto')} ${st.previsto} ${pillStatus('na_barra')} ${st.na_barra} ${pillStatus('atracado')} ${st.atracado} ${pillStatus('desatracado')} ${st.desatracado}</p>`;
+  function filtrosAtuais() {
+    return new URLSearchParams([...new FormData($('#filtros'))].filter(([, v]) => v));
   }
 
-  async function carregarBtp() {
+  async function carregar(atualizar = false) {
+    const q = filtrosAtuais();
+    if (atualizar) q.set('atualizar', 'true');
+    $('#status').textContent = 'Consultando…';
     try {
-      $('#btp').innerHTML = mostrarResumoBtp(await api('/api/btp/lineup'));
-    } catch {
-      $('#btp').innerHTML = '<p class="muted">Nenhuma planilha importada ainda.</p>';
+      const [lista, resumo] = await Promise.all([api(`/api/navios?${q}`), api(`/api/resumo?${q}`)]);
+      $('#status').innerHTML = `${lista.total} de ${lista.qtdRegistrosDss} atracações · DSS consultado ${data(lista.consultadoEm)}${lista.aviso ? `<div class="erro">${esc(lista.aviso)}</div>` : ''}`;
+      preencherOpcoes('terminal', lista.terminais, terminal);
+      preencherOpcoes('armador', lista.armadores);
+      mostrarCartoes(resumo);
+      mostrarProximas(resumo);
+      mostrarTabela(lista.navios);
+    } catch (e) {
+      $('#status').innerHTML = `<span class="erro">${esc(e.message)}</span>`;
+      ['#cartoes', '#proximas', '#tabela'].forEach((s) => ($(s).innerHTML = ''));
     }
   }
 
-  $('#form-btp').addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const arquivo = ev.target.arquivo.files[0];
-    const alvo = $('#btp');
-    if (!arquivo) { alvo.innerHTML = '<p class="erro">Escolha o arquivo baixado do site da BTP.</p>'; return; }
-    alvo.innerHTML = '<p class="muted">Importando…</p>';
-    try {
-      const c = await api(`/api/btp/planilha?nome=${encodeURIComponent(arquivo.name)}`, { method: 'POST', body: arquivo, headers: { 'content-type': 'application/octet-stream' } });
-      alvo.innerHTML = mostrarResumoBtp({ ...c, nomeArquivo: arquivo.name }) + (c.avisos.length ? `<ul class="muted">${c.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : '');
-      ev.target.reset();
-    } catch (e) { erro(alvo, e); }
-  });
-
-  $('#btn-comparar').addEventListener('click', async () => {
-    const alvo = $('#comparacao');
-    alvo.innerHTML = '<p class="muted">Comparando com o DSS…</p>';
-    try {
-      const c = await api('/api/btp/comparacao');
-      const r = c.resumo;
-      const linhas = c.divergencias.map((d) => `<tr>
-          <td>${esc(d.navio)}<div class="muted">v. DSS ${esc(d.viagemDss)} · BTP ${esc(d.viagemBtp)}</div>${pillStatus(d.statusBtp)}</td>
-          <td>${d.diferencas.map((x) => `${esc(x.campo)}: BTP ${data(x.btp)} × DSS ${data(x.dss)}${x.diferencaHoras !== null ? ` (${x.diferencaHoras > 0 ? '+' : ''}${x.diferencaHoras} h)` : ''}`).join('<br>')}${d.aviso ? `<div class="muted">${esc(d.aviso)}</div>` : ''}</td>
-        </tr>`).join('');
-      alvo.innerHTML = `
-        <div class="resumo">
-          <div><strong>${r.conferidos}</strong>navios nas duas fontes</div>
-          <div><strong>${r.comDivergencia}</strong>com divergência (> ${c.toleranciaHoras} h)</div>
-          <div><strong>${r.somenteNaPlanilha}</strong>só na planilha</div>
-          <div><strong>${r.somenteNoDss}</strong>só no DSS</div>
-        </div>
-        ${linhas ? `<div class="tabela"><table><thead><tr><th>Navio</th><th>Diferenças</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<p class="muted">Nenhuma divergência.</p>'}
-        ${c.somenteNaPlanilha.length ? `<p class="muted">Só na planilha da BTP: ${c.somenteNaPlanilha.map((x) => `${esc(x.navio)} v. ${esc(x.viagem)}`).join(', ')}.</p>` : ''}
-        ${c.somenteNoDss.length ? `<p class="muted">Só no DSS: ${c.somenteNoDss.map((x) => `${esc(x.navio)} v. ${esc(x.viagem)}`).join(', ')}.</p>` : ''}`;
-    } catch (e) { erro(alvo, e); }
-  });
-
-  async function carregarStatus() {
-    try {
-      const s = await api('/api/health');
-      const pill = (ok, texto) => `<span class="pill ${ok ? 'ok' : 'alerta'}">${esc(texto)}</span>`;
-      $('#status').innerHTML = `DSS: ${pill(s.dss === 'configurado', s.dss)} &nbsp; Banco: ${pill(s.banco === 'postgres', s.banco === 'postgres' ? 'postgres' : 'memória (some ao reiniciar)')}`;
-      if (s.terminalPadrao) $('#campo-terminal').value = s.terminalPadrao;
-      carregarBtp();
-    } catch (e) { erro($('#status'), e); }
+  function preencherOpcoes(nome, valores, rotulo = (v) => v) {
+    const sel = $(`#filtros [name=${nome}]`);
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Todos</option>' + valores.map((v) => `<option value="${esc(v)}">${esc(rotulo(v))}</option>`).join('');
+    sel.value = atual;
   }
 
-  let naviosAtuais = [];
-  $('#form-previsao').addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const f = new FormData(ev.target);
-    const alvo = $('#previsao');
-    alvo.innerHTML = '<p class="muted">Consultando o DSS…</p>';
-    try {
-      const terminal = (f.get('terminal') || '').trim();
-      const corpo = await api(`/api/previsao-entrada?dias=${f.get('dias')}&terminal=${encodeURIComponent(terminal)}`);
-      naviosAtuais = corpo.navios;
-      const r = corpo.resumo;
-      const terminais = [...new Set(corpo.navios.map((n) => n.terminal).filter(Boolean))];
-      if (terminais.length) $('#lista-terminais').innerHTML = terminais.map((t) => `<option value="${esc(t)}">`).join('');
-      const linhas = corpo.navios.map((n, i) => `<tr>
-          <td>${esc(n.navio)}<div class="muted">v. ${esc(n.viagem)} · ${esc(n.armador)} · ${esc(n.terminal)}${n.btp?.berco ? ` · ${esc(n.btp.berco)}` : ''}</div>${n.btp ? pillStatus(n.btp.status) : n.situacao === 'atracado' ? '<span class="pill ok">atracado</span>' : ''}</td>
-          <td>${data(n.datas.prevChegada)}${n.btp?.chegada ? `<div class="muted">chegou ${data(n.btp.chegada)}</div>` : ''}</td>
-          <td>${prevReal(n.datas.prevAtracacao, n.datas.atracacao)}</td>
-          <td>${data(n.datas.prevSaida)}</td>
-          <td>${data(n.datas.deadline)}</td>
-          <td>${prevReal(n.datas.prevAberturaGate, n.datas.aberturaGate)}</td>
-          <td>Dry: ${prevReal(n.datas.prevLiberacaoDry, n.datas.liberacaoDry)}<br>Reefer: ${prevReal(n.datas.prevLiberacaoReefer, n.datas.liberacaoReefer)}</td>
-          <td>${n.conteineres.map((c) => `${esc(c.numero)}${c.perigoso ? ' <span class="pill alerta">perigoso</span>' : ''}`).join('<br>') || '—'}</td>
-          <td><button type="button" class="secundario pequeno" data-navio="${i}">Usar navio</button></td>
-        </tr>`).join('');
-      alvo.innerHTML = `
-        <div class="resumo">
-          <div><strong>${r.totalNavios}</strong>navios na janela</div>
-          <div><strong>${r.atracados}</strong>atracados</div>
-          <div><strong>${r.previstos}</strong>previstos</div>
-          ${corpo.planilhaBtp ? `<div><strong>${r.naBarra}</strong>na barra (BTP)</div>` : ''}
-          <div><strong>${r.totalConteineresPrevistos}</strong>contêineres monitorados previstos</div>
-        </div>
-        ${corpo.avisos.length ? `<p><span class="pill alerta">Atenção</span></p><ul>${corpo.avisos.map((a) => `<li>${esc(a.mensagem)}</li>`).join('')}</ul>` : ''}
-        <p class="muted">Fonte: ${corpo.fonte === 'dss' ? 'DSS' : 'planilha da BTP'}${corpo.planilhaBtp ? ` · planilha da BTP de ${data(corpo.planilhaBtp.importadoEm)}` : ''}</p>
-        <div class="tabela"><table><thead><tr><th>Navio</th><th>Chegada prev.</th><th>Atracação</th><th>Saída prev.</th><th>Deadline</th><th>Abertura gate</th><th>Liberação</th><th>Contêineres</th><th></th></tr></thead>
-        <tbody>${linhas || '<tr><td colspan="9">Nenhuma atracação na janela.</td></tr>'}</tbody></table></div>
-        ${corpo.semAtracacaoNaJanela.length ? `<p class="muted">${corpo.semAtracacaoNaJanela.length} contêiner(es) monitorado(s) sem atracação na janela: ${corpo.semAtracacaoNaJanela.map((c) => `${esc(c.numero)} (${esc(c.navioNome)}${c.navioViagem ? ` v. ${esc(c.navioViagem)}` : ''})`).join(', ')}. Confira o nome do navio e a viagem.</p>` : ''}
-        ${bruto(corpo)}`;
-    } catch (e) { erro(alvo, e); }
-  });
-  $('#previsao').addEventListener('click', (ev) => {
-    const i = ev.target.closest('button')?.dataset.navio;
-    if (i === undefined) return;
-    const n = naviosAtuais[Number(i)];
-    $('#campo-navio').value = n.navio || '';
-    $('#campo-viagem').value = n.viagem || '';
-    $('#form-cadastro').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    $('#form-cadastro input[name=numero]').focus();
-  });
-
-  $('#form-cadastro').addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const f = new FormData(ev.target);
-    const alvo = $('#cadastro');
-    const dados = {
-      numero: f.get('numero'), armador: f.get('armador') || 'AUTO', navioNome: f.get('navioNome'), navioViagem: f.get('navioViagem'),
-      descricao: f.get('descricao'), perigoso: f.get('perigoso') === 'on', classeRisco: f.get('classeRisco'),
-    };
-    alvo.innerHTML = '<p class="muted">Salvando…</p>';
-    try {
-      const corpo = await api('/api/conteineres', { method: 'POST', body: JSON.stringify(dados) });
-      const c = corpo.conteiner;
-      alvo.innerHTML = `<p><span class="pill ok">${corpo.criado ? 'Cadastrado' : 'Atualizado'}</span> ${esc(c.numero)} no ${esc(c.navioNome)}${c.navioViagem ? ` v. ${esc(c.navioViagem)}` : ''}${corpo.digitoVerificadorValido ? '' : ' <span class="pill alerta">dígito verificador não confere</span>'}</p>`;
-      ev.target.reset();
-      carregarLista();
-    } catch (e) { erro(alvo, e); }
-  });
-
-  async function carregarLista() {
-    const alvo = $('#lista');
-    try {
-      const corpo = await api('/api/conteineres');
-      const linhas = corpo.conteineres.map((c) => `<tr>
-          <td>${esc(c.numero)}${c.perigoso ? ' <span class="pill alerta">perigoso</span>' : ''}</td>
-          <td>${esc(c.armador)}</td><td>${esc(c.navioNome)}${c.navioViagem ? `<div class="muted">v. ${esc(c.navioViagem)}</div>` : ''}</td>
-          <td>${esc(c.descricao)}</td><td>${esc(c.situacao)}</td>
-          <td><button type="button" class="secundario pequeno" data-remover="${esc(c.numero)}">Remover</button></td>
-        </tr>`).join('');
-      alvo.innerHTML = `<div class="tabela"><table><thead><tr><th>Número</th><th>Armador</th><th>Navio</th><th>Descrição</th><th>Situação</th><th></th></tr></thead><tbody>${linhas || '<tr><td colspan="6">Nenhum contêiner cadastrado.</td></tr>'}</tbody></table></div>`;
-    } catch (e) { erro(alvo, e); }
+  function mostrarCartoes(r) {
+    const c = (n, texto, campo, valor) => `<button type="button" data-campo="${campo}" data-valor="${valor}"><strong>${n || 0}</strong>${texto}</button>`;
+    $('#cartoes').innerHTML = [
+      c(r.total, 'atracações', '', ''),
+      c(r.porSituacao.previsto, 'previstas', 'situacao', 'previsto'),
+      c(r.porSituacao.atracacao_atrasada, 'atracação atrasada', 'situacao', 'atracacao_atrasada'),
+      c(r.porSituacao.atracado, 'atracados', 'situacao', 'atracado'),
+      c(r.porGate.aberto, 'gates abertos', 'gate', 'aberto'),
+      c(r.porGate.aguardando, 'gates a abrir', 'gate', 'aguardando'),
+      c(r.deadlines.length, `deadlines em ${r.proximasHoras} h`, 'gate', 'aberto'),
+      c(r.liberacoes.length, `liberações em ${r.proximasHoras} h`, '', ''),
+    ].join('');
   }
-  $('#lista').addEventListener('click', async (ev) => {
-    const numero = ev.target.closest('button')?.dataset.remover;
-    if (!numero) return;
-    try {
-      await api(`/api/conteineres/${encodeURIComponent(numero)}`, { method: 'DELETE' });
-      carregarLista();
-    } catch (e) { erro($('#lista'), e); }
-  });
-  $('#btn-lista').addEventListener('click', carregarLista);
 
-  carregarStatus();
-  carregarLista();
+  function mostrarProximas(r) {
+    $('#janela').textContent = r.proximasHoras;
+    const bloco = (titulo, itens, linha) => `<div><h2>${titulo}</h2>${itens.length ? `<ul>${itens.map((i) => `<li>${linha(i)}</li>`).join('')}</ul>` : '<p class="suave">Nada previsto.</p>'}</div>`;
+    const nome = (i) => `<strong>${esc(i.navio)}</strong> <span class="suave">v. ${esc(i.viagem)} · ${esc(terminal(i.terminal))}</span>`;
+    $('#proximas').innerHTML = [
+      bloco('Deadlines (gate aberto)', r.deadlines, (i) => `${data(i.deadline)} · ${nome(i)} <span class="suave">faltam ${i.horasRestantes} h</span>`),
+      bloco('Aberturas de gate', r.aberturasGate, (i) => `${data(i.prevAberturaGate)} · ${nome(i)}`),
+      bloco('Chegadas', r.chegadas, (i) => `${data(i.prevChegada)} · ${nome(i)}`),
+      bloco('Atracações', r.atracacoes, (i) => `${data(i.prevAtracacao)} · ${nome(i)}`),
+      bloco('Liberações de importação', r.liberacoes, (i) => `${data(i.prevista)} · ${i.tipo} · ${nome(i)}`),
+      bloco('Atrasados', r.atrasados, (i) => `${nome(i)} ${i.situacao.navio === 'atracacao_atrasada' ? pill('atracacao_atrasada') : ''}${i.situacao.dry === 'atrasado' ? pill('atrasado', 'dry atrasado') : ''}${i.situacao.reefer === 'atrasado' ? pill('atrasado', 'reefer atrasado') : ''}`),
+    ].join('');
+  }
+
+  function mostrarTabela(navios) {
+    const linhas = navios.map((n) => `<tr>
+        <td><strong>${esc(n.navio)}</strong><div class="suave">v. ${esc(n.viagem)} · ${esc(n.armador)}</div></td>
+        <td>${esc(terminal(n.terminal))}</td>
+        <td>${pill(n.situacao.navio)}</td>
+        <td>${data(n.datas.prevChegada)}</td>
+        <td>${prevReal(n.datas.prevAtracacao, n.datas.atracacao, n.horas.atrasoAtracacao)}</td>
+        <td>${data(n.datas.prevSaida)}${n.horas.estadia !== null ? `<div class="suave">${n.horas.estadia} h no berço</div>` : ''}</td>
+        <td>${pill(n.situacao.gate)}<div>${prevReal(n.datas.prevAberturaGate, n.datas.aberturaGate, n.horas.atrasoAberturaGate)}</div></td>
+        <td>${data(n.datas.deadline)}${n.horas.ateDeadline !== null && n.situacao.gate === 'aberto' ? `<div class="suave">faltam ${n.horas.ateDeadline} h</div>` : ''}</td>
+        <td>${pill(n.situacao.dry)}<div>${prevReal(n.datas.prevLiberacaoDry, n.datas.liberacaoDry, n.horas.atrasoLiberacaoDry)}</div></td>
+        <td>${pill(n.situacao.reefer)}<div>${prevReal(n.datas.prevLiberacaoReefer, n.datas.liberacaoReefer, n.horas.atrasoLiberacaoReefer)}</div></td>
+      </tr>`).join('');
+    $('#tabela').innerHTML = `<div class="tabela"><table><thead><tr>
+        <th>Navio</th><th>Terminal</th><th>Situação</th><th>Chegada prev.</th><th>Atracação</th><th>Saída prev.</th>
+        <th>Abertura de gate</th><th>Deadline</th><th>Liberação dry</th><th>Liberação reefer</th>
+      </tr></thead><tbody>${linhas || '<tr><td colspan="10">Nenhuma atracação com esses filtros.</td></tr>'}</tbody></table></div>`;
+  }
+
+  $('#filtros').addEventListener('submit', (ev) => { ev.preventDefault(); carregar(); });
+  $('#limpar').addEventListener('click', () => { $('#filtros').reset(); carregar(); });
+  $('#atualizar').addEventListener('click', () => carregar(true));
+  $('#cartoes').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    $('#filtros').reset();
+    if (b.dataset.campo) $(`#filtros [name=${b.dataset.campo}]`).value = b.dataset.valor;
+    carregar();
+  });
+  carregar();
+  setInterval(() => carregar(), 5 * 60 * 1000);
 </script>
 </body>
 </html>
