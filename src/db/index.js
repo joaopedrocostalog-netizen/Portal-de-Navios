@@ -13,17 +13,9 @@ const CAMPOS = {
   descricao: 'descricao',
   perigoso: 'perigoso',
   classeRisco: 'classe_risco',
-  navioMmsi: 'navio_mmsi',
-  navioImo: 'navio_imo',
   navioNome: 'navio_nome',
-  portoDestino: 'porto_destino',
-  locodeDestino: 'locode_destino',
-  etaEtracking: 'eta_etracking',
-  progresso: 'progresso',
-  localAtual: 'local_atual',
+  navioViagem: 'navio_viagem',
   situacao: 'situacao',
-  ultimoRastreioEm: 'ultimo_rastreio_em',
-  rastreioBruto: 'rastreio_bruto',
 };
 
 const PADROES = {
@@ -31,17 +23,9 @@ const PADROES = {
   descricao: null,
   perigoso: false,
   classeRisco: null,
-  navioMmsi: null,
-  navioImo: null,
   navioNome: null,
-  portoDestino: null,
-  locodeDestino: null,
-  etaEtracking: null,
-  progresso: null,
-  localAtual: null,
+  navioViagem: null,
   situacao: 'monitorando',
-  ultimoRastreioEm: null,
-  rastreioBruto: null,
 };
 
 function iso(valor) {
@@ -49,27 +33,11 @@ function iso(valor) {
   return valor instanceof Date ? valor.toISOString() : valor;
 }
 
-function dataValida(valor) {
-  return valor && !Number.isNaN(Date.parse(valor)) ? valor : null;
-}
-
-// Eventos realizados são históricos: a data faz parte da chave.
-// Eventos previstos têm uma chave só por evento+local, para a data prevista ser atualizada no lugar
-// (senão cada mudança de previsão do armador criaria uma linha nova).
-function chavePrevista(e) {
-  return `previsto|${e.evento || ''}|${e.locode || ''}`;
-}
-
-function chaveEvento(e) {
-  return e.realizado ? `${e.evento || ''}|${e.locode || ''}|${e.dataHora || ''}` : chavePrevista(e);
-}
-
 // ---------------------------------------------------------------------------
 // Memória
 // ---------------------------------------------------------------------------
 function criarMemoria() {
   const conteineres = new Map();
-  const eventos = new Map();
 
   return {
     tipo: 'memoria',
@@ -95,24 +63,7 @@ function criarMemoria() {
       return { ...novo };
     },
     async removerConteiner(numero) {
-      eventos.delete(numero);
       return conteineres.delete(numero);
-    },
-    async registrarEventos(numero, lista, fonte) {
-      const atuais = eventos.get(numero) || new Map();
-      for (const e of lista) {
-        const chave = chaveEvento(e);
-        if (e.realizado) atuais.delete(chavePrevista(e)); // a previsão virou fato
-        const anterior = atuais.get(chave);
-        if (anterior && e.realizado) continue;
-        atuais.set(chave, { ...e, realizado: Boolean(e.realizado), fonte, registradoEm: anterior?.registradoEm || new Date().toISOString() });
-      }
-      eventos.set(numero, atuais);
-    },
-    async listarEventos(numero) {
-      return [...(eventos.get(numero) || new Map()).values()].sort((a, b) =>
-        String(a.dataHora || '').localeCompare(String(b.dataHora || '')),
-      );
     },
   };
 }
@@ -135,9 +86,7 @@ function criarPostgres(url) {
 
   function deLinha(l) {
     const obj = { numero: l.numero };
-    for (const [campo, coluna] of Object.entries(CAMPOS)) obj[campo] = l[coluna];
-    obj.etaEtracking = iso(obj.etaEtracking);
-    obj.ultimoRastreioEm = iso(obj.ultimoRastreioEm);
+    for (const [campo, coluna] of Object.entries(CAMPOS)) obj[campo] = l[coluna] ?? null;
     obj.criadoEm = iso(l.criado_em);
     obj.atualizadoEm = iso(l.atualizado_em);
     return obj;
@@ -165,7 +114,7 @@ function criarPostgres(url) {
     async salvarConteiner(numero, campos) {
       const entradas = Object.entries(campos).filter(([k, v]) => k in CAMPOS && v !== undefined);
       const colunas = entradas.map(([k]) => CAMPOS[k]);
-      const valores = entradas.map(([k, v]) => (k === 'rastreioBruto' && v !== null ? JSON.stringify(v) : v));
+      const valores = entradas.map(([, v]) => v);
       const marcadores = valores.map((_, i) => `$${i + 2}`);
       const atualizacoes = colunas.map((c) => `${c} = EXCLUDED.${c}`).concat('atualizado_em = NOW()');
       const sql =
@@ -178,37 +127,6 @@ function criarPostgres(url) {
     async removerConteiner(numero) {
       const { rowCount } = await pool.query('DELETE FROM conteineres WHERE numero = $1', [numero]);
       return rowCount > 0;
-    },
-    async registrarEventos(numero, lista, fonte) {
-      for (const e of lista) {
-        if (e.realizado) {
-          await pool.query('DELETE FROM eventos_conteiner WHERE numero = $1 AND chave = $2', [numero, chavePrevista(e)]);
-        }
-        await pool.query(
-          `INSERT INTO eventos_conteiner (numero, chave, evento, porto, locode, data_hora, realizado, navio, fonte)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-           ON CONFLICT (numero, chave) DO UPDATE SET
-             data_hora = EXCLUDED.data_hora, porto = EXCLUDED.porto, navio = EXCLUDED.navio, fonte = EXCLUDED.fonte
-           WHERE NOT eventos_conteiner.realizado`,
-          [numero, chaveEvento(e), e.evento, e.porto, e.locode, dataValida(e.dataHora), Boolean(e.realizado), e.navio, fonte],
-        );
-      }
-    },
-    async listarEventos(numero) {
-      const { rows } = await pool.query(
-        'SELECT * FROM eventos_conteiner WHERE numero = $1 ORDER BY data_hora NULLS LAST, id',
-        [numero],
-      );
-      return rows.map((l) => ({
-        evento: l.evento,
-        porto: l.porto,
-        locode: l.locode,
-        dataHora: iso(l.data_hora),
-        realizado: l.realizado,
-        navio: l.navio,
-        fonte: l.fonte,
-        registradoEm: iso(l.registrado_em),
-      }));
     },
   };
 }

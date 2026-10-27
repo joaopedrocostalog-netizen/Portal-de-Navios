@@ -8,17 +8,13 @@ const path = require('node:path');
 
 const config = require('./config');
 const pacote = require('../package.json');
-const shipxy = require('./services/shipxy');
-const etracking = require('./services/etracking');
 const dss = require('./services/dss');
-const { sincronizar, semBruto } = require('./services/conteineres');
 const { preverEntrada } = require('./services/previsao');
 const {
   ErroApi,
   digitoVerificadorValido,
   normalizarNumeroConteiner,
   normalizarArmador,
-  normalizarPorto,
   normalizarDias,
   querBruto,
 } = require('./util');
@@ -102,12 +98,8 @@ function criarApp(store) {
       servico: pacote.name,
       versao: pacote.version,
       banco: store.tipo,
-      fontes: {
-        dss: dss.configurado() ? 'configurado' : config.modoDemo ? 'demo (defina DSS_URL)' : 'não configurado (defina DSS_URL)',
-        shipxy: shipxy.configurada() ? 'configurada' : config.modoDemo ? 'demo (defina SHIPXY_API_KEY)' : 'não configurada (defina SHIPXY_API_KEY)',
-        etracking: etracking.descricao(),
-      },
-      portoPadrao: config.portoPadrao,
+      dss: dss.configurado() ? 'configurado' : 'não configurado (defina NAVIOS_OF_DSS)',
+      terminalPadrao: config.terminalPadrao || null,
     },
   }));
 
@@ -128,45 +120,10 @@ function criarApp(store) {
     };
   });
 
-  // ------------------------------------------------------------------ portos
-  rota('GET', '/api/portos', async ({ query }) => {
-    const busca = String(query.busca || '').trim();
-    if (busca.length < 2) throw new ErroApi('Informe ao menos 2 letras em "busca", ex.: /api/portos?busca=santos.', { status: 400 });
-    const max = Math.min(Math.max(Number(query.max) || 10, 1), 50);
-    const r = await shipxy.buscarPortos(busca, max);
-    return { corpo: { fonte: r.fonte, total: r.dados.length, portos: r.dados, ...(querBruto(query) ? { bruto: r.bruto } : {}) } };
-  });
-
-  // ------------------------------------------------------------------ navios
-  rota('GET', '/api/navios/chegadas', async ({ query }) => {
-    const porto = normalizarPorto(query.porto, config.portoPadrao);
-    const dias = normalizarDias(query.dias, config.diasPadrao);
-    const inicio = new Date();
-    const fim = new Date(inicio.getTime() + dias * 24 * 3600 * 1000);
-    const r = await shipxy.chegadasPrevistas(porto, inicio, fim);
-    return {
-      corpo: {
-        porto,
-        janela: { inicio: inicio.toISOString(), fim: fim.toISOString(), dias },
-        fonte: r.fonte,
-        total: r.dados.length,
-        navios: r.dados,
-        ...(querBruto(query) ? { bruto: r.bruto } : {}),
-      },
-    };
-  });
-
-  rota('GET', '/api/navios/:mmsi', async ({ params, query }) => {
-    const mmsi = String(params.mmsi).trim();
-    if (!/^\d{9}$/.test(mmsi)) throw new ErroApi('MMSI inválido: deve ter 9 dígitos.', { status: 400 });
-    const r = await shipxy.buscarNavio(mmsi);
-    return { corpo: { fonte: r.fonte, navio: r.dados, ...(querBruto(query) ? { bruto: r.bruto } : {}) } };
-  });
-
   // ------------------------------------------------------------------ contêineres
   rota('GET', '/api/conteineres', async ({ query }) => {
     const situacao = query.situacao ? String(query.situacao) : undefined;
-    const lista = (await store.listarConteineres({ situacao })).map(semBruto);
+    const lista = await store.listarConteineres({ situacao });
     return { corpo: { total: lista.length, conteineres: lista } };
   });
 
@@ -177,39 +134,31 @@ function criarApp(store) {
     const opcional = (v) => (v === undefined || v === null || v === '' ? undefined : String(v).trim());
 
     const existia = Boolean(await store.obterConteiner(numero));
+    const navioNome = opcional(dados.navioNome);
+    if (!existia && !navioNome) {
+      throw new ErroApi('Informe "navioNome" (como aparece no DSS) para o contêiner entrar na previsão.', { status: 400 });
+    }
     const conteiner = await store.salvarConteiner(numero, {
       armador,
       descricao: opcional(dados.descricao),
       perigoso: dados.perigoso === undefined ? undefined : Boolean(dados.perigoso),
       classeRisco: opcional(dados.classeRisco),
-      navioMmsi: opcional(dados.navioMmsi),
-      navioImo: opcional(dados.navioImo),
-      navioNome: opcional(dados.navioNome),
+      navioNome: navioNome ? navioNome.toUpperCase() : undefined,
+      navioViagem: opcional(dados.navioViagem)?.toUpperCase(),
       situacao: opcional(dados.situacao),
     });
 
-    const resposta = {
-      criado: !existia,
-      conteiner: semBruto(conteiner),
-      digitoVerificadorValido: digitoVerificadorValido(numero),
+    return {
+      status: existia ? 200 : 201,
+      corpo: { criado: !existia, conteiner, digitoVerificadorValido: digitoVerificadorValido(numero) },
     };
-    if (dados.sincronizar !== false && etracking.disponivel()) {
-      try {
-        resposta.sincronizacao = await sincronizar(store, numero);
-      } catch (erro) {
-        // O cadastro vale mesmo se o eTracking falhar agora; dá para sincronizar depois.
-        resposta.sincronizacao = { sincronizado: false, erro: erro.message };
-      }
-    }
-    return { status: existia ? 200 : 201, corpo: resposta };
   });
 
-  rota('GET', '/api/conteineres/:numero', async ({ params, query }) => {
+  rota('GET', '/api/conteineres/:numero', async ({ params }) => {
     const numero = normalizarNumeroConteiner(params.numero);
     const conteiner = await store.obterConteiner(numero);
     if (!conteiner) throw new ErroApi(`Contêiner ${numero} não está cadastrado.`, { status: 404 });
-    const eventos = await store.listarEventos(numero);
-    return { corpo: { conteiner: querBruto(query) ? conteiner : semBruto(conteiner), eventos } };
+    return { corpo: { conteiner } };
   });
 
   rota('DELETE', '/api/conteineres/:numero', async ({ params }) => {
@@ -219,42 +168,11 @@ function criarApp(store) {
     return { status: 204 };
   });
 
-  // Consulta avulsa ao eTracking, sem gravar nada (útil para conferir o que a API devolve).
-  rota('GET', '/api/conteineres/:numero/rastreio', async ({ params, query }) => {
-    const numero = normalizarNumeroConteiner(params.numero);
-    const armador = normalizarArmador(query.armador);
-    const r = await etracking.rastrear(numero, armador);
-    return {
-      status: r.pronto ? 200 : 202,
-      cabecalhos: r.pronto ? {} : { 'retry-after': String(r.tenteNovamenteEmSegundos) },
-      corpo: {
-        fonte: r.fonte,
-        pronto: r.pronto,
-        digitoVerificadorValido: digitoVerificadorValido(numero),
-        ...(r.pronto
-          ? { rastreio: r.dados }
-          : { situacao: r.situacao, tenteNovamenteEmSegundos: r.tenteNovamenteEmSegundos }),
-        ...(querBruto(query) ? { bruto: r.bruto } : {}),
-      },
-    };
-  });
-
-  rota('POST', '/api/conteineres/:numero/sincronizar', async ({ params, query }) => {
-    const numero = normalizarNumeroConteiner(params.numero);
-    const r = await sincronizar(store, numero, { incluirBruto: querBruto(query) });
-    return {
-      status: r.sincronizado ? 200 : 202,
-      cabecalhos: r.sincronizado ? {} : { 'retry-after': String(r.tenteNovamenteEmSegundos) },
-      corpo: r,
-    };
-  });
-
   // ------------------------------------------------------------------ previsão
   rota('GET', '/api/previsao-entrada', async ({ query }) => {
-    const porto = normalizarPorto(query.porto, config.portoPadrao);
     const dias = normalizarDias(query.dias, config.diasPadrao);
-    const terminal = query.terminal ? String(query.terminal).trim() : undefined;
-    return { corpo: await preverEntrada(store, { porto, dias, terminal, incluirBruto: querBruto(query) }) };
+    const terminal = query.terminal !== undefined ? String(query.terminal).trim() : config.terminalPadrao;
+    return { corpo: await preverEntrada(store, { dias, terminal: terminal || undefined, incluirBruto: querBruto(query) }) };
   });
 
   // ------------------------------------------------------------------ despacho

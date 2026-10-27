@@ -16,7 +16,6 @@
 const config = require('../config');
 const { obterJson } = require('./http');
 const { ErroApi } = require('../util');
-const demo = require('./demo');
 
 const ROTULO = 'DSS';
 
@@ -90,8 +89,7 @@ function normalizarAtracacao(r) {
  */
 async function atracacoes() {
   if (!configurado()) {
-    if (config.modoDemo) return { fonte: 'demo', dados: demo.atracacoesDemo(), bruto: null };
-    throw new ErroApi('DSS não configurado: defina DSS_URL (ou NAVIOS_OF_DSS) com o endereço do endpoint.', {
+    throw new ErroApi('DSS não configurado: defina NAVIOS_OF_DSS (ou DSS_URL) com o endereço completo do endpoint (https://…).', {
       status: 503,
       fonte: 'dss',
     });

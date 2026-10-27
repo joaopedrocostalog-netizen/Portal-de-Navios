@@ -11,26 +11,8 @@ class ErroApi extends Error {
   }
 }
 
-/**
- * Converte o que as APIs devolvem em data ISO 8601.
- * Aceita Unix em segundos ou milissegundos (número ou texto) e textos de data.
- * Se não reconhecer, devolve o valor original para não perder informação.
- */
-function paraIso(valor) {
-  if (valor === undefined || valor === null || valor === '') return null;
-  if (typeof valor === 'number' || /^\d+$/.test(String(valor))) {
-    const n = Number(valor);
-    const ms = n > 1e12 ? n : n * 1000;
-    const d = new Date(ms);
-    return Number.isNaN(d.getTime()) ? String(valor) : d.toISOString();
-  }
-  const d = new Date(valor);
-  return Number.isNaN(d.getTime()) ? String(valor) : d.toISOString();
-}
-
 const PADRAO_CONTEINER = /^[A-Z]{4}\d{7}$/;
 const PADRAO_SCAC = /^[A-Z]{4}$/;
-const PADRAO_LOCODE = /^[A-Z]{2}[A-Z0-9]{3}$/;
 
 const VALORES_LETRAS = (() => {
   // ISO 6346: A=10 e pula os múltiplos de 11 (11, 22, 33).
@@ -77,16 +59,6 @@ function normalizarArmador(valor) {
   return scac;
 }
 
-function normalizarPorto(valor, padrao) {
-  const porto = String(valor || padrao || '').trim().toUpperCase();
-  if (!PADRAO_LOCODE.test(porto)) {
-    throw new ErroApi('Código de porto inválido. Use o código de 5 caracteres da Shipxy (descubra em /api/portos?busca=santos).', {
-      status: 400,
-    });
-  }
-  return porto;
-}
-
 function normalizarDias(valor, padrao) {
   const dias = valor === undefined || valor === '' ? padrao : Number(valor);
   if (!Number.isInteger(dias) || dias < 1 || dias > 30) {
@@ -102,11 +74,9 @@ function querBruto(query) {
 
 module.exports = {
   ErroApi,
-  paraIso,
   digitoVerificadorValido,
   normalizarNumeroConteiner,
   normalizarArmador,
-  normalizarPorto,
   normalizarDias,
   querBruto,
 };

@@ -1,7 +1,7 @@
 {
   "name": "portal-de-navios",
   "version": "1.0.0",
-  "description": "API que prevê a entrada de contêineres no porto a partir da chegada de navios (Shipxy).",
+  "description": "Previsão de entrada de contêineres a partir das atracações da API Portal de Navios do DSS.",
   "main": "src/server.js",
   "private": true,
   "scripts": {

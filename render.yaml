@@ -1,6 +1,6 @@
 # Blueprint do Render: cria a API (web service) e o banco PostgreSQL de uma vez.
 # No Render: New > Blueprint > escolha este repositório.
-# Endereço/login do DSS e chave da Shipxy ficam com "sync: false": o Render pede o valor na criação e
+# Endereço e login do DSS ficam com "sync: false": o Render pede o valor na criação e
 # você pode alterar depois em  Dashboard > portal-de-navios > Environment.
 
 services:
@@ -21,14 +21,8 @@ services:
         sync: false
       - key: DSS_SENHA
         sync: false
-      - key: SHIPXY_API_KEY
-        sync: false
-      - key: PORTO_PADRAO
-        value: BRSSZ
       - key: DIAS_PADRAO
         value: "7"
-      - key: TOLERANCIA_DIVERGENCIA_HORAS
-        value: "24"
       - key: INTERVALO_TEMPO_REAL_MS
         value: "60000"
       - key: DATABASE_URL

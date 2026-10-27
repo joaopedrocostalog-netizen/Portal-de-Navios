@@ -3,18 +3,16 @@
 // Atualizações em tempo real por WebSocket no caminho /ws (mesma porta da API, como o Render exige).
 //
 // Mensagens do cliente:
-//   { "acao": "acompanhar-navio", "mmsi": "710000001" }
-//   { "acao": "acompanhar-porto", "porto": "BRSSZ", "dias": 7 }
-//   { "acao": "parar", "chave": "navio:710000001" }
+//   { "acao": "acompanhar-previsao", "dias": 7, "terminal": "btp" }
+//   { "acao": "parar", "chave": "previsao:btp:7" }
 //
 // Cada assunto é consultado uma única vez por intervalo, não importa quantos clientes
-// estejam ouvindo, para não gastar créditos das APIs à toa.
+// estejam ouvindo, para não sobrecarregar o DSS.
 
 const { WebSocketServer } = require('ws');
 const config = require('./config');
-const shipxy = require('./services/shipxy');
 const { preverEntrada } = require('./services/previsao');
-const { normalizarPorto, normalizarDias } = require('./util');
+const { normalizarDias } = require('./util');
 
 function iniciarTempoReal(servidorHttp, store) {
   const wss = new WebSocketServer({ server: servidorHttp, path: '/ws' });
@@ -61,7 +59,7 @@ function iniciarTempoReal(servidorHttp, store) {
 
   wss.on('connection', (ws) => {
     ws.assinaturas = new Set();
-    enviar(ws, { tipo: 'bem-vindo', acoes: ['acompanhar-navio', 'acompanhar-porto', 'parar'] });
+    enviar(ws, { tipo: 'bem-vindo', acoes: ['acompanhar-previsao', 'parar'] });
 
     ws.on('message', (bruto) => {
       let msg;
@@ -71,19 +69,17 @@ function iniciarTempoReal(servidorHttp, store) {
         return enviar(ws, { tipo: 'erro', mensagem: 'Mensagem precisa ser JSON.' });
       }
       try {
-        if (msg.acao === 'acompanhar-navio') {
-          const mmsi = String(msg.mmsi || '');
-          if (!/^\d{9}$/.test(mmsi)) throw new Error('MMSI inválido: deve ter 9 dígitos.');
-          assinar(ws, `navio:${mmsi}`, async () => (await shipxy.buscarNavio(mmsi)).dados);
-        } else if (msg.acao === 'acompanhar-porto') {
-          const porto = normalizarPorto(msg.porto, config.portoPadrao);
+        if (msg.acao === 'acompanhar-previsao') {
           const dias = normalizarDias(msg.dias, config.diasPadrao);
-          assinar(ws, `porto:${porto}:${dias}`, () => preverEntrada(store, { porto, dias }));
+          const terminal = String(msg.terminal ?? config.terminalPadrao ?? '').trim().toLowerCase();
+          assinar(ws, `previsao:${terminal || 'todos'}:${dias}`, () =>
+            preverEntrada(store, { dias, terminal: terminal || undefined }),
+          );
         } else if (msg.acao === 'parar') {
           cancelar(ws, String(msg.chave || ''));
           enviar(ws, { tipo: 'cancelado', chave: msg.chave });
         } else {
-          throw new Error('Ação desconhecida.');
+          throw new Error('Ação desconhecida. Use "acompanhar-previsao" ou "parar".');
         }
       } catch (erro) {
         enviar(ws, { tipo: 'erro', mensagem: erro.message });
