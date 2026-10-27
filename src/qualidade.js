@@ -21,13 +21,16 @@ const PREVISTAS = [
   ['data_prev_lib_dry', 'Liberação dry prevista'],
   ['data_prev_lib_reefer', 'Liberação reefer prevista'],
 ];
-// [real, prevista que diz quando a real já deveria existir, rótulo]
+// [real, datas que dizem quando a real já deveria existir (usa a primeira preenchida), rótulo]
+// Quando a prevista não vem, o deadline serve de referência para o gate (o gate abre antes dele)
+// e a saída prevista para as liberações.
 const REAIS = [
-  ['data_atracacao', 'data_prev_chegada', 'Atracação'],
-  ['data_abertura_gate', 'data_prev_abertura_gate', 'Abertura do gate'],
-  ['data_lib_dry', 'data_prev_lib_dry', 'Liberação dry'],
-  ['data_lib_reefer', 'data_prev_lib_reefer', 'Liberação reefer'],
+  ['data_atracacao', ['data_prev_atracacao', 'data_prev_chegada'], 'Atracação'],
+  ['data_abertura_gate', ['data_prev_abertura_gate', 'data_deadline'], 'Abertura do gate'],
+  ['data_lib_dry', ['data_prev_lib_dry', 'data_prev_saida'], 'Liberação dry'],
+  ['data_lib_reefer', ['data_prev_lib_reefer', 'data_prev_saida'], 'Liberação reefer'],
 ];
+const REFERENCIA_GATE_REEFER = ['data_prev_lib_reefer', 'data_deadline'];
 const PROBLEMAS = {
   data_real_no_futuro: 'data "real" no futuro (tratada como prevista)',
   reefer_e_abertura_de_gate: 'liberação reefer que é abertura de gate reefer',
@@ -59,9 +62,11 @@ function avaliarQualidade(brutos, normalizados, mudancas = [], { agora = Date.no
       const n = regs.filter((r) => tem(r[campo])).length;
       return { campo, rotulo: rotuloNoTerminal(campo, rotulo, terminal), preenchidos: n, total, pct: pct(n, total) };
     });
-    const reais = REAIS.map(([campo, prev, rotulo]) => {
+    const reais = REAIS.map(([campo, refs, rotulo]) => {
+      const referencias = campo === 'data_lib_reefer' && REEFER_E_GATE.has(terminal) ? REFERENCIA_GATE_REEFER : refs;
       const devidos = regs.filter((r) => {
-        const p = dssMs(r[prev]);
+        const ref = referencias.find((c) => tem(r[c]));
+        const p = ref ? dssMs(r[ref]) : null;
         return p && p < agora - 24 * HORA;
       });
       const n = devidos.filter((r) => tem(r[campo])).length;
