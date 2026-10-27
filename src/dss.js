@@ -219,7 +219,7 @@ function normalizarTodos(registros, agora = Date.now()) {
   return registros.map((r) => normalizar(r, agora, contexto));
 }
 
-function criarCliente({ url, usuario = '', senha = '', token = '', timeoutMs = 15000, cacheSegundos = 60, intervaloMinimoForcarMs = 15000, fetch: f = globalThis.fetch }) {
+function criarCliente({ url, usuario = '', senha = '', token = '', timeoutMs = 15000, cacheSegundos = 60, intervaloMinimoForcarMs = 15000, fetch: f = globalThis.fetch, aoAtualizar = null }) {
   let cache = null; // { em, corpo }
   let emAndamento = null; // consulta em curso, compartilhada por pedidos simultâneos
 
@@ -272,6 +272,8 @@ function criarCliente({ url, usuario = '', senha = '', token = '', timeoutMs = 1
         const em = Date.now();
         cache = { em, corpo, registros: normalizarTodos(corpo.registros, em) };
         ultimoErro = null;
+        // Gancho para o histórico de mudanças (não atrasa nem derruba a consulta).
+        if (aoAtualizar) Promise.resolve().then(() => aoAtualizar(corpo.registros, em)).catch((e) => console.error('[historico]', e.message));
         return cache;
       })
       .catch((e) => {

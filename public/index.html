@@ -48,6 +48,24 @@
     .amarelo { background: var(--c-amarelo); color: var(--t-amarelo); } .laranja { background: var(--c-laranja); color: var(--t-laranja); }
     .verde { background: var(--c-verde); color: var(--t-verde); } .vermelho { background: var(--c-vermelho); color: var(--t-vermelho); }
     a { color: var(--destaque); }
+    button.nome { font: inherit; font-weight: 600; padding: 0; border: 0; background: none; color: var(--texto); cursor: pointer; text-align: left; }
+    button.nome:hover { color: var(--destaque); text-decoration: underline; }
+    .mudancas { list-style: none; margin: 0; padding: 0; }
+    .mudancas li { padding: 5px 0; border-bottom: 1px solid var(--borda); }
+    .mudancas li:last-child { border-bottom: 0; }
+    .seta { color: var(--suave); padding: 0 4px; }
+    .antigo { text-decoration: line-through; color: var(--suave); }
+    dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); border: 1px solid var(--borda); border-radius: 10px; padding: 0; background: var(--cartao); color: var(--texto); }
+    dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+    .detalhe-topo { display: flex; justify-content: space-between; align-items: start; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--borda); position: sticky; top: 0; background: var(--cartao); }
+    .detalhe-corpo { padding: 14px 16px; }
+    .sequencia { list-style: none; margin: 0 0 18px; padding: 0; position: relative; }
+    .sequencia li { display: grid; grid-template-columns: 18px 120px 1fr; gap: 8px; align-items: baseline; padding: 4px 0; }
+    .ponto { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--destaque); background: var(--cartao); margin-top: 4px; }
+    .passou .ponto { background: var(--destaque); }
+    .sem-data { color: var(--suave); }
+    .agora { grid-template-columns: 18px 1fr !important; color: var(--destaque); font-size: 12px; font-weight: 600; }
+    .agora .ponto { border-radius: 0; height: 2px; width: 14px; border: 0; background: var(--destaque); margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -70,6 +88,11 @@
   </section>
 
   <section>
+    <h2>Mudanças nas últimas 24 horas</h2>
+    <div id="mudancas"></div>
+  </section>
+
+  <section>
     <form id="filtros">
       <label>Terminal<select name="terminal"><option value="">Todos</option></select></label>
       <label>Armador<select name="armador"><option value="">Todos</option></select></label>
@@ -84,9 +107,17 @@
       <button class="leve" type="button" id="atualizar">Consultar o DSS agora</button>
     </form>
     <div id="tabela"></div>
-    <p class="suave">Resposta original: <a href="/api/dss/bruto" target="_blank">/api/dss/bruto</a> · API: <a href="/api/navios" target="_blank">/api/navios</a> · <a href="/api/resumo" target="_blank">/api/resumo</a></p>
+    <p class="suave">Resposta original: <a href="/api/dss/bruto" target="_blank">/api/dss/bruto</a> · API: <a href="/api/navios" target="_blank">/api/navios</a> · <a href="/api/resumo" target="_blank">/api/resumo</a> · <a href="/api/mudancas?horas=168" target="_blank">/api/mudancas</a></p>
   </section>
 </main>
+
+<dialog id="detalhe">
+  <div class="detalhe-topo">
+    <div id="detalhe-titulo"></div>
+    <button class="leve" type="button" id="fechar">Fechar</button>
+  </div>
+  <div class="detalhe-corpo" id="detalhe-corpo"></div>
+</dialog>
 
 <script>
   const $ = (s) => document.querySelector(s);
@@ -114,6 +145,119 @@
   };
   const terminal = (t) => ({ btp: 'BTP', santos_brasil: 'Santos Brasil', embraport: 'Embraport (DPW)' }[t] || t || '—');
 
+  // ---- histórico de mudanças
+  // Mesma chave do servidor: terminal|NAVIO|VIAGEM, só letras e números.
+  const so = (v) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const chave = (i) => i.chave || `${String(i.terminal ?? '').trim().toLowerCase()}|${so(i.navio)}|${so(i.viagem)}`;
+  const botaoNavio = (i) => `<button type="button" class="nome" data-chave="${esc(chave(i))}" title="Ver datas e histórico">${esc(i.navio)}</button>`;
+  const dssIso = (v) => (v ? new Date(`${String(v).replace(' ', 'T')}Z`).toISOString() : null);
+  const fmtHora = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  function diferenca(ms) {
+    const sinal = ms > 0 ? '+' : '−';
+    const a = Math.abs(ms) / 36e5;
+    const texto = a < 1 ? `${Math.round(a * 60)} min` : a < 48 ? `${Math.round(a)} h` : `${(a / 24).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} dias`;
+    return `<span class="pill ${ms > 0 ? 'laranja' : 'azul'}" title="${ms > 0 ? 'adiou' : 'antecipou'}">${sinal}${texto}</span>`;
+  }
+  const NO_REGISTRO = { novo: 'entrou na lista do DSS', removido: 'saiu da lista do DSS', voltou: 'voltou à lista do DSS' };
+  function textoMudanca(m) {
+    if (m.campo === 'registro') return `<span class="suave">${esc(NO_REGISTRO[m.para] || m.para)}</span>`;
+    if (m.campo === 'armador') return `Armador: <span class="antigo">${esc(m.de)}</span><span class="seta">→</span><strong>${esc(m.para)}</strong>`;
+    const de = dssIso(m.de);
+    const para = dssIso(m.para);
+    return `${esc(m.rotulo)}: ${de ? `<span class="antigo">${data(de)}</span>` : '<span class="suave">sem data</span>'}<span class="seta">→</span><strong>${para ? data(para) : 'sem data'}</strong>${de && para && de !== para ? ` ${diferenca(Date.parse(para) - Date.parse(de))}` : ''}`;
+  }
+  const AVISO_MEMORIA = '<p class="suave">O histórico está guardado em memória e recomeça quando o servidor reinicia. Para guardar de vez, configure DATABASE_URL no Render.</p>';
+
+  let mostrarTodasMudancas = false;
+  function mostrarMudancas(lista, tipo) {
+    const datas = lista.filter((m) => m.campo !== 'registro');
+    const lista_ = lista.filter((m) => m.campo === 'registro');
+    const conta = (p) => lista_.filter((m) => m.para === p).length;
+    const entradas = [conta('novo') && `${conta('novo')} entraram`, conta('removido') && `${conta('removido')} saíram`, conta('voltou') && `${conta('voltou')} voltaram`].filter(Boolean);
+    const visiveis = mostrarTodasMudancas ? datas : datas.slice(0, 12);
+    $('#mudancas').innerHTML =
+      (datas.length
+        ? `<ul class="mudancas">${visiveis.map((m) => `<li><span class="suave">${fmtHora.format(new Date(m.em)).replace(',', '')}</span> · ${botaoNavio(m)} <span class="suave">v. ${esc(m.viagem)} · ${esc(terminal(m.terminal))}</span><br>${textoMudanca(m)}</li>`).join('')}</ul>` +
+          (datas.length > 12 ? `<button class="leve" type="button" id="todas-mudancas">${mostrarTodasMudancas ? 'Mostrar menos' : `Mostrar todas (${datas.length})`}</button>` : '')
+        : '<p class="suave">Nenhuma data mudou nas últimas 24 horas nos navios filtrados.</p>') +
+      (entradas.length ? `<p class="suave">Lista do DSS: ${entradas.join(', ')}.</p>` : '') +
+      (tipo === 'memoria' ? AVISO_MEMORIA : '');
+  }
+
+  // ---- detalhe do navio
+  const EVENTOS = [
+    ['chegada', 'Chegada', 'prevChegada', null],
+    ['atracacao', 'Atracação', 'prevAtracacao', 'atracacao'],
+    ['gate', 'Abertura do gate dry', 'prevAberturaGate', 'aberturaGate'],
+    ['gateReefer', 'Abertura do gate reefer', 'prevAberturaGateReefer', 'aberturaGateReefer'],
+    ['deadline', 'Deadline', 'deadline', null],
+    ['dry', 'Liberação dry', 'prevLiberacaoDry', 'liberacaoDry'],
+    ['reefer', 'Liberação reefer', 'prevLiberacaoReefer', 'liberacaoReefer'],
+    ['saida', 'Saída', 'prevSaida', null],
+  ];
+  const EVENTO_DO_CAMPO = {
+    data_prev_chegada: 'chegada', data_prev_atracacao: 'atracacao', data_atracacao: 'atracacao', data_prev_saida: 'saida',
+    data_prev_abertura_gate: 'gate', data_abertura_gate: 'gate', data_deadline: 'deadline', data_prev_lib_dry: 'dry', data_lib_dry: 'dry',
+  };
+  const eventoDe = (m) => EVENTO_DO_CAMPO[m.campo] || (/reefer/.test(m.campo) ? (/gate/i.test(m.rotulo) ? 'gateReefer' : 'reefer') : null);
+
+  async function abrirDetalhe(ch) {
+    const dlg = $('#detalhe');
+    $('#detalhe-titulo').innerHTML = `<h2>${esc(ch.split('|')[1])}</h2>`;
+    $('#detalhe-corpo').innerHTML = '<p class="suave">Carregando…</p>';
+    if (!dlg.open) dlg.showModal();
+    try {
+      mostrarDetalhe(await api(`/api/navio?chave=${encodeURIComponent(ch)}`));
+    } catch (e) {
+      $('#detalhe-corpo').innerHTML = `<p class="erro">${esc(e.message)}</p>`;
+    }
+  }
+
+  function mostrarDetalhe(d) {
+    const n = d.navio;
+    const ref = n || d.mudancas[0];
+    $('#detalhe-titulo').innerHTML = `<h2 style="font-size:18px;margin:0">${esc(ref.navio)}</h2>
+      <div class="suave">v. ${esc(ref.viagem)}${n ? ` · ${esc(n.armador)}` : ''} · ${esc(terminal(ref.terminal))}</div>
+      ${n ? `<div style="margin-top:4px">${pill(n.situacao.navio)} ${pill(n.situacao.gate, `gate dry: ${(ROTULO[n.situacao.gate] || [n.situacao.gate])[0].toLowerCase()}`)}${ajustes(n)}</div>` : ''}`;
+
+    let html = '';
+    if (n) {
+      const porEvento = {};
+      for (const m of d.mudancas) { const e = eventoDe(m); if (e) porEvento[e] = (porEvento[e] || 0) + 1; }
+      const agora = Date.now();
+      const itens = EVENTOS.map(([id, rotulo, p, r]) => {
+        const prev = n.datas[p];
+        const real = r ? n.datas[r] : null;
+        return { id, rotulo, prev, real, quando: real || prev };
+      });
+      const comData = itens.filter((i) => i.quando).sort((a, b) => a.quando.localeCompare(b.quando));
+      const semData = itens.filter((i) => !i.quando);
+      let marcouAgora = false;
+      const linhas = [];
+      for (const i of comData) {
+        const passou = Date.parse(i.quando) <= agora;
+        if (!passou && !marcouAgora) { linhas.push(`<li class="agora"><span class="ponto"></span><span>agora · ${data(new Date().toISOString())}</span></li>`); marcouAgora = true; }
+        const estado = i.real
+          ? `<span class="pill verde">realizado</span>${i.prev && i.prev !== i.real ? ` <span class="suave">previsto ${data(i.prev)}</span>` : ''}`
+          : `<span class="suave">${passou ? 'previsto (já passou)' : 'previsto'}</span>`;
+        const mudou = porEvento[i.id] ? ` <span class="pill laranja">mudou ${porEvento[i.id]}×</span>` : '';
+        linhas.push(`<li class="${passou ? 'passou' : ''}"><span class="ponto"></span><span>${data(i.quando)}</span><span><strong>${i.rotulo}</strong> ${estado}${mudou}</span></li>`);
+      }
+      if (!marcouAgora) linhas.push(`<li class="agora"><span class="ponto"></span><span>agora · ${data(new Date().toISOString())}</span></li>`);
+      html += `<h2>Sequência de datas</h2><ul class="sequencia">${linhas.join('')}</ul>`;
+      if (semData.length) html += `<p class="suave">Sem data no DSS: ${semData.map((i) => i.rotulo).join(', ')}.</p>`;
+    } else {
+      html += '<p class="suave">Este navio não está mais na lista atual do DSS. Abaixo, o que ficou registrado no histórico.</p>';
+    }
+
+    html += '<h2>Histórico de mudanças</h2>';
+    html += d.mudancas.length
+      ? `<ul class="mudancas">${d.mudancas.map((m) => `<li><span class="suave">${fmtHora.format(new Date(m.em)).replace(',', '')}</span> · ${textoMudanca(m)}</li>`).join('')}</ul>`
+      : '<p class="suave">Nenhuma mudança registrada para este navio.</p>';
+    if (d.historico === 'memoria') html += AVISO_MEMORIA;
+    $('#detalhe-corpo').innerHTML = html;
+  }
+
   async function api(caminho) {
     const res = await fetch(caminho);
     const corpo = await res.json();
@@ -137,10 +281,12 @@
       preencherOpcoes('armador', lista.armadores);
       mostrarCartoes(resumo);
       mostrarProximas(resumo);
+      ultimasMudancas = [lista.mudancas || [], lista.historico];
+      mostrarMudancas(...ultimasMudancas);
       mostrarTabela(lista.navios);
     } catch (e) {
       $('#status').innerHTML = `<span class="erro">${esc(e.message)}</span>`;
-      ['#cartoes', '#proximas', '#tabela'].forEach((s) => ($(s).innerHTML = ''));
+      ['#cartoes', '#proximas', '#mudancas', '#tabela'].forEach((s) => ($(s).innerHTML = ''));
     }
   }
 
@@ -168,7 +314,7 @@
   function mostrarProximas(r) {
     $('#janela').textContent = r.proximasHoras;
     const bloco = (titulo, itens, linha) => `<div><h2>${titulo}</h2>${itens.length ? `<ul>${itens.map((i) => `<li>${linha(i)}</li>`).join('')}</ul>` : '<p class="suave">Nada previsto.</p>'}</div>`;
-    const nome = (i) => `<strong>${esc(i.navio)}</strong> <span class="suave">v. ${esc(i.viagem)} · ${esc(terminal(i.terminal))}</span>`;
+    const nome = (i) => `${botaoNavio(i)} <span class="suave">v. ${esc(i.viagem)} · ${esc(terminal(i.terminal))}</span>`;
     $('#proximas').innerHTML = [
       bloco('Deadlines (gate aberto)', r.deadlines, (i) => `${data(i.deadline)} · ${nome(i)} <span class="suave">faltam ${i.horasRestantes} h</span>`),
       bloco('Aberturas de gate', r.aberturasGate, (i) => `${data(i.prevista)} · ${i.tipo} · ${nome(i)}`),
@@ -182,7 +328,7 @@
 
   function mostrarTabela(navios) {
     const linhas = navios.map((n) => `<tr>
-        <td><strong>${esc(n.navio)}</strong>${ajustes(n)}<div class="suave">v. ${esc(n.viagem)} · ${esc(n.armador)}${n.armadorOrigem && n.armadorOrigem !== 'dss' ? ` <span title="armador deduzido pelo ${esc(n.armadorOrigem)}">(deduzido)</span>` : ''}</div></td>
+        <td>${botaoNavio(n)}${n.mudancas24h ? ` <span class="pill laranja" title="datas que mudaram nas últimas 24 h">mudou ${n.mudancas24h}×</span>` : ''}${ajustes(n)}<div class="suave">v. ${esc(n.viagem)} · ${esc(n.armador)}${n.armadorOrigem && n.armadorOrigem !== 'dss' ? ` <span title="armador deduzido pelo ${esc(n.armadorOrigem)}">(deduzido)</span>` : ''}</div></td>
         <td>${esc(terminal(n.terminal))}</td>
         <td>${pill(n.situacao.navio)}${n.horas.esperaAtracacao ? `<div class="suave">há ${Math.round(n.horas.esperaAtracacao)} h</div>` : ''}</td>
         <td>${data(n.datas.prevChegada)}</td>
@@ -215,6 +361,14 @@
     if (!b) return;
     aplicarCartao(b.dataset.campo, b.dataset.valor);
   });
+  let ultimasMudancas = [[], null];
+  document.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button.nome[data-chave]');
+    if (b) return abrirDetalhe(b.dataset.chave);
+    if (ev.target.id === 'todas-mudancas') { mostrarTodasMudancas = !mostrarTodasMudancas; mostrarMudancas(...ultimasMudancas); }
+  });
+  $('#fechar').addEventListener('click', () => $('#detalhe').close());
+  $('#detalhe').addEventListener('click', (ev) => { if (ev.target === $('#detalhe')) $('#detalhe').close(); });
   carregar();
   setInterval(() => carregar(), 5 * 60 * 1000);
 </script>

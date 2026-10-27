@@ -5,6 +5,8 @@
 //   GET /api/painel?dias=7 (+ filtros)    tudo que a página precisa, numa chamada só (lista + resumo)
 //   GET /api/navios?terminal=&armador=&navio=&viagem=&situacao=&gate=&de=&ate=&dias=&encerrados=&ordenar=
 //   GET /api/resumo?horas=48 (+ os mesmos filtros)
+//   GET /api/mudancas?horas=24&navio=&terminal=&campo=   histórico de mudanças das datas
+//   GET /api/navio?chave=terminal|NAVIO|VIAGEM           detalhe do navio: datas atuais + todas as mudanças
 //   GET /api/dss/bruto                    resposta original do DSS, sem tratamento
 //   GET /api/health                       status, idade do cache e último erro
 //
@@ -18,6 +20,7 @@ const path = require('node:path');
 const zlib = require('node:zlib');
 const crypto = require('node:crypto');
 const { criarCliente, filtrar, resumir, ErroDss } = require('./dss');
+const { iniciarHistorico, criarMemoria, chaveDe, rotuloCampo } = require('./historico');
 
 const env = process.env;
 const config = {
@@ -39,20 +42,32 @@ const ORDENS = {
   navio: (r) => r.navio,
 };
 
-function criarClientePadrao() {
+function criarClientePadrao(aoAtualizar = null) {
   if (!config.dssUrl) return null;
-  return criarCliente({ url: config.dssUrl, usuario: env.DSS_USUARIO, senha: env.DSS_SENHA, token: env.DSS_TOKEN, cacheSegundos: config.cacheSegundos });
+  return criarCliente({ url: config.dssUrl, usuario: env.DSS_USUARIO, senha: env.DSS_SENHA, token: env.DSS_TOKEN, cacheSegundos: config.cacheSegundos, aoAtualizar });
 }
 
-function criarServidor(cliente = criarClientePadrao()) {
+const HORA = 36e5;
+const comRotulo = (m) => ({ ...m, rotulo: rotuloCampo(m.campo, m.terminal) });
+
+function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria()) {
   async function dados(q) {
     if (!cliente) throw new ErroDss('DSS não configurado: defina DSS_URL com o endereço do endpoint listarNavios.', 503);
     return cliente.listar({ forcar: q.atualizar === 'true' });
   }
 
+  /** Cada navio ganha a chave do histórico e quantas datas mudaram nas últimas 24 h. */
+  function marcarMudancas(navios) {
+    const contagem = historico.contarPorChave(new Date(Date.now() - 24 * HORA).toISOString());
+    return navios.map((n) => {
+      const chave = chaveDe(n);
+      return contagem[chave] ? { ...n, chave, mudancas24h: contagem[chave] } : { ...n, chave };
+    });
+  }
+
   function lista(r, q) {
     const ordem = ORDENS[q.ordenar] || ORDENS.referencia;
-    const navios = filtrar(r.registros, q).sort((a, b) => String(ordem(a) ?? '~').localeCompare(String(ordem(b) ?? '~')));
+    const navios = marcarMudancas(filtrar(r.registros, q).sort((a, b) => String(ordem(a) ?? '~').localeCompare(String(ordem(b) ?? '~'))));
     return {
       consultadoEm: r.consultadoEm,
       aviso: r.aviso,
@@ -75,6 +90,7 @@ function criarServidor(cliente = criarClientePadrao()) {
         ok: true,
         dss: cliente ? 'configurado' : 'não configurado',
         cacheSegundos: config.cacheSegundos,
+        historico: historico.tipo,
         ...(r?.consultadoEm ? { consultadoEm: r.consultadoEm, idadeSegundos: Math.round((Date.now() - Date.parse(r.consultadoEm)) / 1000), registros: r.qtdRegistros } : {}),
         ...(r?.aviso || r?.erro ? { erro: r.aviso || r.erro } : {}),
       };
@@ -82,7 +98,29 @@ function criarServidor(cliente = criarClientePadrao()) {
     '/api/painel': async (q) => {
       const r = await dados(q);
       const l = lista(r, q);
-      return { ...l, resumo: resumir(filtrar(r.registros, q), { horas: horasResumo(q) }) };
+      // Mudanças das últimas 24 h, só dos navios que estão na visão filtrada.
+      const chaves = new Set(l.navios.map((n) => n.chave));
+      const mudancas = (await historico.listar({ desde: new Date(Date.now() - 24 * HORA).toISOString(), limite: 5000 }))
+        .filter((m) => chaves.has(m.chave))
+        .slice(0, 100)
+        .map(comRotulo);
+      return { ...l, historico: historico.tipo, mudancas, resumo: resumir(filtrar(r.registros, q), { horas: horasResumo(q) }) };
+    },
+    // Histórico: ?horas=24 (ou desde=ISO) &terminal= &navio= &campo= &chave= &limite=
+    '/api/mudancas': async (q) => {
+      const horas = Math.min(Math.max(Number(q.horas) || 24, 1), 24 * 365);
+      const desde = q.desde || new Date(Date.now() - horas * HORA).toISOString();
+      const mudancas = await historico.listar({ desde, chave: q.chave, terminal: q.terminal, navio: q.navio, campo: q.campo, limite: Math.min(Number(q.limite) || 500, 5000) });
+      return { historico: historico.tipo, desde, total: mudancas.length, mudancas: mudancas.map(comRotulo) };
+    },
+    // Detalhe de um navio: ?chave=terminal|NAVIO|VIAGEM (ou terminal=&navio=&viagem=)
+    '/api/navio': async (q) => {
+      const chave = q.chave || chaveDe({ terminal: q.terminal, navio: q.navio, viagem: q.viagem });
+      const r = await dados({});
+      const navio = r.registros.find((n) => chaveDe(n) === chave);
+      const mudancas = (await historico.listar({ chave, limite: 1000 })).map(comRotulo);
+      if (!navio && !mudancas.length) throw new ErroDss(`Navio ${chave} não está na lista do DSS nem no histórico.`, 404);
+      return { chave, consultadoEm: r.consultadoEm, historico: historico.tipo, navio: navio ? { ...navio, chave } : null, mudancas };
     },
     '/api/navios': async (q) => lista(await dados(q), q),
     '/api/resumo': async (q) => {
@@ -132,9 +170,10 @@ function criarServidor(cliente = criarClientePadrao()) {
   });
 }
 
-if (require.main === module) {
-  const cliente = criarClientePadrao();
-  const servidor = criarServidor(cliente);
+async function main() {
+  const historico = await iniciarHistorico();
+  const cliente = criarClientePadrao((registros, em) => historico.registrar(registros, em).then((novas) => novas.length && console.log(`[historico] ${novas.length} mudança(s) detectada(s).`)));
+  const servidor = criarServidor(cliente, historico);
   servidor.listen(config.porta, () => {
     console.log(`Portal de Navios na porta ${config.porta}.`);
     if (!cliente) return console.log('[diagnóstico] DSS_URL não configurado.');
@@ -164,5 +203,7 @@ if (require.main === module) {
   });
   process.on('SIGTERM', () => servidor.close(() => process.exit(0)));
 }
+
+if (require.main === module) main();
 
 module.exports = { criarServidor };

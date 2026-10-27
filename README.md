@@ -52,6 +52,8 @@ Os códigos 400, 401, 403 e 500 chegam com a mensagem do DSS. Por exemplo, 403 s
 | `GET /api/painel?dias=7` | Tudo o que a página usa, numa chamada só: lista + resumo |
 | `GET /api/navios` | Atracações normalizadas com datas, situações e horas calculadas |
 | `GET /api/resumo?horas=48` | Contagens por terminal, armador, situação e gate, mais as listas das próximas horas |
+| `GET /api/mudancas?horas=24` | Histórico de mudanças (filtros: `navio`, `terminal`, `campo`, `chave`, `desde`, `limite`) |
+| `GET /api/navio?chave=btp\|MSCINSA\|NA642R` | Detalhe do navio: datas atuais e todas as mudanças registradas |
 | `GET /api/dss/bruto` | Resposta original do DSS, sem tratamento (consulta na hora) |
 | `GET /api/health` | Status, idade do cache, total de registros e último erro do DSS |
 
@@ -64,6 +66,21 @@ Filtros aceitos em `/api/navios` e `/api/resumo`:
 - `encerrados=true` (inclui os encerrados na janela);
 - `ordenar` (`referencia`, `chegada`, `atracacao`, `deadline` ou `navio`);
 - `atualizar=true`, que consulta o DSS na hora (no máximo uma vez a cada 15 s).
+
+## Histórico de mudanças
+
+A cada consulta ao DSS, cada atracação (chave `terminal|NAVIO|VIAGEM`) é comparada campo a campo com a consulta anterior: as 11 datas e o armador, como vieram do DSS. Só as diferenças são gravadas, por exemplo:
+
+```json
+{ "em": "2026-10-27T14:42:00Z", "navio": "MSC INSA", "viagem": "NA642R", "terminal": "btp",
+  "campo": "data_deadline", "rotulo": "Deadline", "de": "2026-10-25 15:00:00", "para": "2026-10-26 11:00:00" }
+```
+
+Também ficam registrados os navios que entram na lista do DSS, saem dela ou voltam (`campo: "registro"`). A primeira consulta de todas só serve de base e não gera mudanças.
+
+- **Painel:** bloco "Mudanças nas últimas 24 horas" (só dos navios filtrados), com quanto a data adiou ou antecipou, e o selo "mudou N×" na tabela.
+- **Detalhe do navio:** clique no nome do navio para ver a sequência de datas (chegada, gates, deadline, atracação, liberações, saída), o que já passou e o que vem, e todas as mudanças registradas.
+- **Onde fica:** com `DATABASE_URL`, no PostgreSQL (tabelas `navios_estado` e `navios_mudancas`, criadas sozinhas; 180 dias guardados). Sem ela, ou se o banco não responder, em memória, e o histórico recomeça a cada reinício do servidor.
 
 ## Desempenho
 
@@ -99,6 +116,7 @@ Exemplo de item de `/api/navios`:
 | `CACHE_SEGUNDOS` | Intervalo da consulta ao DSS em segundo plano (60 s) |
 | `MANTER_ACORDADO` | `false` desliga o ping contra a hibernação |
 | `PING_MINUTOS` | Intervalo do ping (10 min; tem de ser menor que os 15 min do Render) |
+| `DATABASE_URL` | PostgreSQL do histórico de mudanças (no Render: *Internal Database URL* do `portal-de-navios-db`) |
 | `URL_PUBLICA` | Endereço para o ping, se não estiver no Render (lá é automático) |
 
 Ao iniciar, o servidor escreve no log o endpoint (sem senha), o tipo de login e o resultado de uma consulta de teste ao DSS.
@@ -111,13 +129,14 @@ npm start              # http://localhost:3000
 npm test
 ```
 
-Requer Node 20+. Não há pacotes para instalar.
+Requer Node 20+. O único pacote é o `pg`, usado só quando há `DATABASE_URL` (`npm install`).
 
 ## Estrutura
 
 ```
 src/dss.js         cliente da API do DSS, normalização, situações, filtros e resumo
+src/historico.js   histórico de mudanças (PostgreSQL ou memória)
 src/server.js      rotas HTTP e página
-public/index.html  painel
-test/dss.test.js   testes com o DSS simulado
+public/index.html  painel e detalhe do navio
+test/              testes com o DSS simulado (PG_TESTE_URL=... testa também com PostgreSQL)
 ```
