@@ -160,7 +160,7 @@ const ok = (registros = AMOSTRA) => ({ status: 200, apiVersion: 1, mensagemErro:
 
 test('Basic Auth (inclusive embutido na URL), cache e consulta compartilhada', async () => {
   const f = fetchFalso([{ status: 200, corpo: ok() }]);
-  const c = criarCliente({ url: 'https://us%40r:s3nh%40@dss.exemplo.com/wsdss/navios/listarNavios', fetch: f, cacheSegundos: 60 });
+  const c = criarCliente({ url: 'https://us%40r:s3nh%40@dss.exemplo.com/wsdss/navios/listarNavios', fetch: f, cacheSegundos: 60, intervaloMinimoForcarMs: 0 });
   const [a] = await Promise.all([c.listar(), c.listar()]);
   await c.listar();
   assert.equal(f.chamadas.length, 1);
@@ -189,7 +189,7 @@ test('erros 400, 401, 403, 500, HTML e rede', async () => {
 
 test('se o DSS falhar depois, devolve a última consulta boa com aviso', async () => {
   const f = fetchFalso([{ status: 200, corpo: ok() }, { status: 500, corpo: { status: 500, mensagemErro: 'Erro ao acessar o sistema TMS' } }]);
-  const c = criarCliente({ url: 'https://dss.exemplo.com/x', fetch: f, cacheSegundos: 60 });
+  const c = criarCliente({ url: 'https://dss.exemplo.com/x', fetch: f, cacheSegundos: 60, intervaloMinimoForcarMs: 0 });
   await c.listar();
   const r = await c.listar({ forcar: true });
   assert.equal(r.registros.length, 6);
@@ -224,4 +224,77 @@ test('rotas do servidor', async () => {
   await new Promise((r) => semDss.listen(0, r));
   assert.equal((await fetch(`http://127.0.0.1:${semDss.address().port}/api/navios`)).status, 503);
   semDss.close();
+});
+
+// ------------------------------------------------------------------ parte 2: desempenho
+test('janela de trabalho: dias=N sem encerrados e sem registros antigos', () => {
+  const todos = normalizarTodos(
+    [
+      registro('PROXIMO', '1', 'btp', { prev_chegada: 24, prev_saida: 60 }),
+      registro('DISTANTE', '2', 'btp', { prev_chegada: 24 * 20 }),
+      registro('ATRACADO', '3', 'btp', { prev_chegada: -30, atracacao: -10, prev_saida: 20 }),
+      registro('SAIU', '4', 'btp', { prev_chegada: -60, atracacao: -50, prev_saida: -5 }),
+      registro('FANTASMA', '5', 'santos_brasil', { prev_chegada: -24 * 6, deadline: -24 * 7 }),
+    ],
+    AGORA,
+  );
+  const nomes = (q) => filtrar(todos, q, AGORA).map((r) => r.navio);
+  assert.deepEqual(nomes({ dias: '7' }), ['PROXIMO', 'ATRACADO']);
+  assert.deepEqual(nomes({ dias: '7', encerrados: 'true' }), ['PROXIMO', 'ATRACADO', 'SAIU']);
+  assert.deepEqual(nomes({ dias: '30' }), ['PROXIMO', 'DISTANTE', 'ATRACADO']);
+  assert.equal(nomes({}).length, 5, 'sem dias: tudo, como antes');
+});
+
+test('atualização em segundo plano: a página não espera o DSS e o "consultar agora" tem intervalo mínimo', async () => {
+  const f = fetchFalso([{ status: 200, corpo: ok() }]);
+  const c = criarCliente({ url: 'https://dss.exemplo.com/x', fetch: f, cacheSegundos: 0.05, intervaloMinimoForcarMs: 60000 });
+  const parar = c.iniciarAtualizacao(30);
+  await new Promise((r) => setTimeout(r, 120));
+  const antes = f.chamadas.length;
+  assert.ok(antes >= 3, `consultou sozinho ${antes} vezes`);
+  await c.listar({ forcar: true });
+  await c.listar({ forcar: true });
+  assert.ok(f.chamadas.length <= antes + 1, 'forçar não dispara uma consulta por clique');
+  parar();
+});
+
+test('servidor: gzip, ETag/304 e /api/painel numa chamada só', async () => {
+  const f = fetchFalso([{ status: 200, corpo: ok() }]);
+  const srv = criarServidor(criarCliente({ url: 'https://dss.exemplo.com/x', fetch: f }));
+  await new Promise((r) => srv.listen(0, r));
+  const base = `http://127.0.0.1:${srv.address().port}`;
+  const http = require('node:http');
+  const zlib = require('node:zlib');
+  const pedir = (p, headers = {}) =>
+    new Promise((resolve, reject) => {
+      http.get(base + p, { headers }, (res) => {
+        const partes = [];
+        res.on('data', (x) => partes.push(x));
+        res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, corpo: Buffer.concat(partes) }));
+      }).on('error', reject);
+    });
+  try {
+    const comGzip = await pedir('/api/painel?dias=7', { 'accept-encoding': 'gzip' });
+    assert.equal(comGzip.status, 200);
+    assert.equal(comGzip.headers['content-encoding'], 'gzip');
+    const json = JSON.parse(zlib.gunzipSync(comGzip.corpo));
+    assert.ok(Array.isArray(json.navios) && json.resumo && json.resumo.porSituacao, 'lista e resumo juntos');
+    const semGzip = await pedir('/api/painel?dias=7');
+    assert.equal(semGzip.headers['content-encoding'], undefined);
+    assert.ok(comGzip.corpo.length < semGzip.corpo.length);
+
+    const etag = semGzip.headers.etag;
+    assert.ok(etag);
+    const denovo = await pedir('/api/painel?dias=7', { 'if-none-match': etag });
+    assert.equal(denovo.status, 304);
+    assert.equal(denovo.corpo.length, 0);
+
+    const pagina = await pedir('/', { 'accept-encoding': 'gzip' });
+    assert.equal(pagina.headers['content-encoding'], 'gzip');
+    const health = JSON.parse((await pedir('/api/health')).corpo);
+    assert.equal(health.registros, 6);
+    assert.ok(health.idadeSegundos >= 0);
+  } finally {
+    srv.close();
+  }
 });

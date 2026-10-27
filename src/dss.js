@@ -219,7 +219,7 @@ function normalizarTodos(registros, agora = Date.now()) {
   return registros.map((r) => normalizar(r, agora, contexto));
 }
 
-function criarCliente({ url, usuario = '', senha = '', token = '', timeoutMs = 15000, cacheSegundos = 60, fetch: f = globalThis.fetch }) {
+function criarCliente({ url, usuario = '', senha = '', token = '', timeoutMs = 15000, cacheSegundos = 60, intervaloMinimoForcarMs = 15000, fetch: f = globalThis.fetch }) {
   let cache = null; // { em, corpo }
   let emAndamento = null; // consulta em curso, compartilhada por pedidos simultâneos
 
@@ -262,43 +262,89 @@ function criarCliente({ url, usuario = '', senha = '', token = '', timeoutMs = 1
     throw new ErroDss(`DSS: ${motivo}${msg ? ` – ${msg}` : ''}`, 502, corpo || undefined);
   }
 
-  /** Atracações normalizadas. Usa cache curto e, se o DSS falhar, devolve o último resultado bom com aviso. */
+  let emSegundoPlano = false;
+  let ultimoErro = null;
+
+  /** Consulta o DSS e guarda o resultado já normalizado (uma vez por consulta, não a cada acesso). */
+  function atualizar() {
+    emAndamento ||= consultar()
+      .then((corpo) => {
+        const em = Date.now();
+        cache = { em, corpo, registros: normalizarTodos(corpo.registros, em) };
+        ultimoErro = null;
+        return cache;
+      })
+      .catch((e) => {
+        ultimoErro = { em: Date.now(), mensagem: e.message };
+        throw e;
+      })
+      .finally(() => {
+        emAndamento = null;
+      });
+    return emAndamento;
+  }
+
+  /**
+   * Atracações normalizadas. Com a atualização em segundo plano ligada, devolve sempre o cache (sem esperar o DSS).
+   * `forcar` consulta o DSS na hora, mas no máximo a cada `intervaloMinimoForcarMs`. Se o DSS falhar e houver
+   * resultado anterior, devolve esse resultado com aviso.
+   */
   async function listar({ forcar = false } = {}) {
-    const agora = Date.now();
-    let aviso = null;
-    if (forcar || !cache || agora - cache.em > cacheSegundos * 1000) {
+    const idade = cache ? Date.now() - cache.em : Infinity;
+    const vencido = idade > cacheSegundos * 1000 * (emSegundoPlano ? 3 : 1);
+    if (!cache || vencido || (forcar && idade >= intervaloMinimoForcarMs)) {
       try {
-        emAndamento ||= consultar().finally(() => {
-          emAndamento = null;
-        });
-        cache = { em: agora, corpo: await emAndamento };
+        await atualizar();
       } catch (e) {
         if (!cache) throw e;
-        aviso = `${e.message}. Mostrando a última consulta bem-sucedida.`;
       }
     }
-    const { corpo, em } = cache;
+    const { corpo, em, registros } = cache;
     return {
       consultadoEm: new Date(em).toISOString(),
-      aviso,
+      aviso: ultimoErro ? `${ultimoErro.mensagem}. Mostrando a última consulta bem-sucedida.` : null,
       apiVersion: corpo.apiVersion,
       timezone: corpo.timezone || 'UTC',
       qtdRegistros: corpo.qtd_registros ?? corpo.registros.length,
-      registros: normalizarTodos(corpo.registros, agora),
+      registros,
       bruto: corpo,
     };
   }
 
-  return { listar, consultar };
+  /** Liga a consulta periódica ao DSS. Devolve uma função para desligar. */
+  function iniciarAtualizacao(intervaloMs = cacheSegundos * 1000, aoFalhar = () => {}) {
+    emSegundoPlano = true;
+    const rodar = () => atualizar().catch(aoFalhar);
+    rodar();
+    const timer = setInterval(rodar, intervaloMs);
+    timer.unref?.();
+    return () => {
+      clearInterval(timer);
+      emSegundoPlano = false;
+    };
+  }
+
+  return { listar, consultar, iniciarAtualizacao };
 }
 
 // ------------------------------------------------------------------ filtros e resumo
 const sem = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-/** Filtros: terminal, armador, navio (contém), viagem, situacao (do navio), gate, de/ate (data de referência). */
-function filtrar(registros, q = {}) {
+/** Data mais recente de um registro (para descartar registros "fantasma", com tudo no passado). */
+function ultimaData(r) {
+  return Math.max(...Object.values(r.datas).map((v) => (v ? Date.parse(v) : -Infinity)));
+}
+
+/**
+ * Filtros: terminal, armador, navio (contém), viagem, situacao (do navio), gate, de/ate (data de referência).
+ * `dias=N` é a janela de trabalho: navios até N dias à frente, sem os encerrados (a menos que `encerrados=true`)
+ * e sem registros cuja data mais recente ficou mais de 2 dias para trás.
+ */
+function filtrar(registros, q = {}, agora = Date.now()) {
   const de = q.de ? Date.parse(q.de) : null;
   const ate = q.ate ? Date.parse(q.ate) : null;
+  const dias = Number(q.dias) > 0 ? Number(q.dias) : null;
+  const comEncerrados = q.encerrados === 'true';
   const lista = (v) => (v ? String(v).split(',').map((x) => x.trim().toLowerCase()).filter(Boolean) : null);
   const terminais = lista(q.terminal);
   const situacoes = lista(q.situacao);
@@ -313,6 +359,11 @@ function filtrar(registros, q = {}) {
     const ref = r.referencia ? Date.parse(r.referencia) : NaN;
     if (de && !(ref >= de)) return false;
     if (ate && !(ref <= ate)) return false;
+    if (!comEncerrados && (dias || q.encerrados === 'false') && r.situacao.navio === 'encerrado') return false;
+    if (dias) {
+      if (!(ref <= agora + dias * DIA)) return false;
+      if (ultimaData(r) < agora - 2 * DIA) return false;
+    }
     return true;
   });
 }

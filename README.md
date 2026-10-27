@@ -49,18 +49,29 @@ Os códigos 400, 401, 403 e 500 chegam com a mensagem do DSS. Por exemplo, 403 s
 | Rota | Para quê |
 |---|---|
 | `GET /` | Painel: cartões por situação, próximas 48 h (deadlines, aberturas de gate, chegadas, atracações, liberações, atrasos) e tabela completa com filtros |
+| `GET /api/painel?dias=7` | Tudo o que a página usa, numa chamada só: lista + resumo |
 | `GET /api/navios` | Atracações normalizadas com datas, situações e horas calculadas |
 | `GET /api/resumo?horas=48` | Contagens por terminal, armador, situação e gate, mais as listas das próximas horas |
 | `GET /api/dss/bruto` | Resposta original do DSS, sem tratamento (consulta na hora) |
-| `GET /api/health` | Status |
+| `GET /api/health` | Status, idade do cache, total de registros e último erro do DSS |
 
 Filtros aceitos em `/api/navios` e `/api/resumo`:
 - `terminal` (`btp`, `santos_brasil`, `embraport`; aceita vários separados por vírgula);
 - `armador`, `navio` (busca por parte do nome) e `viagem`;
 - `situacao` e `gate`;
 - `de` e `ate` (ISO 8601, sobre a data de atracação real ou prevista);
+- `dias` (janela de trabalho: navios até N dias à frente, sem os encerrados e sem registros cuja data mais recente ficou mais de 2 dias para trás; a página usa 7 por padrão);
+- `encerrados=true` (inclui os encerrados na janela);
 - `ordenar` (`referencia`, `chegada`, `atracacao`, `deadline` ou `navio`);
-- `atualizar=true`, que ignora o cache.
+- `atualizar=true`, que consulta o DSS na hora (no máximo uma vez a cada 15 s).
+
+## Desempenho
+
+- **Atualização em segundo plano:** o servidor consulta o DSS a cada `CACHE_SEGUNDOS` (60 s) e já guarda o resultado normalizado. As páginas nunca esperam pelo DSS. Se ele falhar, o painel mostra a última resposta válida com um aviso.
+- **Compressão gzip** em todas as respostas acima de 1 KB, e **ETag**: quando nada mudou, o navegador recebe `304` sem corpo.
+- **Uma chamada por carga de página** (`/api/painel`).
+- **Janela padrão de 7 dias sem encerrados**, em vez de todas as atracações.
+- **Sem hibernação:** no plano gratuito, o Render desliga o serviço após 15 min sem acesso. O servidor faz um ping no próprio endereço público (`RENDER_EXTERNAL_URL`, definido pelo Render) a cada 10 min. As 750 h mensais do plano gratuito cobrem o mês inteiro de um serviço.
 
 Exemplo de item de `/api/navios`:
 
@@ -85,7 +96,10 @@ Exemplo de item de `/api/navios`:
 | `DSS_URL` | `https://costalog.dssinformatica.com.br/wsdss/navios/listarNavios` |
 | `DSS_USUARIO`, `DSS_SENHA` | Usuário de integração do DSS |
 | `DSS_TOKEN` | Só se o DSS autenticar por token em vez de usuário e senha |
-| `CACHE_SEGUNDOS` | Por quanto tempo a resposta do DSS é reaproveitada (60 s) |
+| `CACHE_SEGUNDOS` | Intervalo da consulta ao DSS em segundo plano (60 s) |
+| `MANTER_ACORDADO` | `false` desliga o ping contra a hibernação |
+| `PING_MINUTOS` | Intervalo do ping (10 min; tem de ser menor que os 15 min do Render) |
+| `URL_PUBLICA` | Endereço para o ping, se não estiver no Render (lá é automático) |
 
 Ao iniciar, o servidor escreve no log o endpoint (sem senha), o tipo de login e o resultado de uma consulta de teste ao DSS.
 
