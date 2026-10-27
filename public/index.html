@@ -66,6 +66,42 @@
     .sem-data { color: var(--suave); }
     .agora { grid-template-columns: 18px 1fr !important; color: var(--destaque); font-size: 12px; font-weight: 600; }
     .agora .ponto { border-radius: 0; height: 2px; width: 14px; border: 0; background: var(--destaque); margin-top: 8px; }
+    a.botao { display: inline-block; text-decoration: none; }
+    .abas { display: flex; gap: 4px; margin-top: 12px; border-bottom: 1px solid var(--borda); }
+    .abas button { font: inherit; padding: 6px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--suave); cursor: pointer; margin-bottom: -1px; }
+    .abas button[aria-selected="true"] { color: var(--texto); border-bottom-color: var(--destaque); font-weight: 600; }
+    /* linha do tempo */
+    .gantt { margin-top: 10px; overflow-x: auto; }
+    .gantt-grade { min-width: 760px; }
+    .gantt-linha { display: grid; grid-template-columns: 210px 1fr; align-items: center; min-height: 30px; border-bottom: 1px solid var(--borda); }
+    .gantt-rotulo { padding: 3px 8px 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .gantt-trilho { position: relative; height: 30px; }
+    .gantt-terminal { padding: 10px 0 4px; font-weight: 600; border-bottom: 1px solid var(--borda); }
+    .gantt-eixo .gantt-trilho { height: 22px; }
+    .gantt-dia { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--borda); font-size: 11px; color: var(--suave); padding-left: 3px; white-space: nowrap; }
+    .gantt-fundo { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--borda); }
+    .gantt-agora { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--destaque); z-index: 2; }
+    .gantt-barra { position: absolute; top: 5px; height: 14px; border-radius: 4px; border: 0; padding: 0; cursor: pointer; z-index: 1; }
+    .gantt-barra.previsto, .gantt-barra.aguardando_atracacao, .gantt-barra.chegada_passou { background: var(--c-azul); outline: 1px solid var(--t-azul); }
+    .gantt-barra.atracado { background: var(--c-laranja); outline: 1px solid var(--t-laranja); }
+    .gantt-barra.encerrado { background: var(--c-cinza); outline: 1px solid var(--t-cinza); }
+    .gantt-barra.estimado { background-image: repeating-linear-gradient(135deg, transparent 0 4px, rgb(127 127 127 / 0.25) 4px 6px); }
+    .gantt-gate { position: absolute; top: 22px; height: 4px; border-radius: 2px; background: var(--t-verde); opacity: 0.8; }
+    .gantt-deadline { position: absolute; top: 19px; width: 2px; height: 10px; background: var(--erro); }
+    .legenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--suave); margin-top: 8px; }
+    .legenda span::before { content: ""; display: inline-block; width: 18px; height: 8px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+    .legenda .l-prev::before { background: var(--c-azul); outline: 1px solid var(--t-azul); }
+    .legenda .l-atr::before { background: var(--c-laranja); outline: 1px solid var(--t-laranja); }
+    .legenda .l-est::before { background: var(--c-azul) repeating-linear-gradient(135deg, transparent 0 4px, rgb(127 127 127 / 0.35) 4px 6px); }
+    .legenda .l-gate::before { height: 4px; background: var(--t-verde); }
+    .legenda .l-dl::before { width: 2px; height: 10px; background: var(--erro); }
+    .legenda .l-agora::before { width: 2px; height: 12px; background: var(--destaque); }
+    /* qualidade */
+    .qualidade td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .qualidade td.grupo { color: var(--suave); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; padding-top: 12px; }
+    .achados { margin: 6px 0 0; padding-left: 18px; }
+    .achados li { margin-bottom: 3px; }
+    textarea { width: 100%; min-height: 140px; font: 13px/1.5 ui-monospace, monospace; padding: 8px; border: 1px solid var(--borda); border-radius: 6px; background: var(--fundo); color: var(--texto); }
   </style>
 </head>
 <body>
@@ -105,10 +141,22 @@
       <button class="acao" type="submit">Filtrar</button>
       <button class="leve" type="button" id="limpar">Limpar</button>
       <button class="leve" type="button" id="atualizar">Consultar o DSS agora</button>
+      <a class="leve botao" id="excel" href="/api/navios.xlsx" download>Exportar Excel</a>
     </form>
+    <div class="abas" role="tablist">
+      <button type="button" role="tab" data-vista="tabela" aria-selected="true">Tabela</button>
+      <button type="button" role="tab" data-vista="linha" aria-selected="false">Linha do tempo</button>
+    </div>
     <div id="tabela"></div>
+    <div id="linha" hidden></div>
     <p class="suave">Resposta original: <a href="/api/dss/bruto" target="_blank">/api/dss/bruto</a> · API: <a href="/api/navios" target="_blank">/api/navios</a> · <a href="/api/resumo" target="_blank">/api/resumo</a> · <a href="/api/mudancas?horas=168" target="_blank">/api/mudancas</a> · <a href="/api/alertas" target="_blank">/api/alertas</a></p>
     <p class="suave" id="alertas"></p>
+  </section>
+
+  <section>
+    <h2>Qualidade dos dados por terminal</h2>
+    <p class="suave">Sobre tudo o que o DSS enviou, sem os filtros acima. "Reais" conta só os registros em que a data real já deveria existir (a prevista passou há mais de 24 h).</p>
+    <div id="qualidade"><p class="suave">Carregando…</p></div>
   </section>
 </main>
 
@@ -285,13 +333,17 @@
       ultimasMudancas = [lista.mudancas || [], lista.historico];
       mostrarMudancas(...ultimasMudancas);
       mostrarTabela(lista.navios);
+      mostrarLinha(lista.navios, q.get('dias'));
+      const qx = new URLSearchParams(q);
+      qx.delete('atualizar');
+      $('#excel').href = `/api/navios.xlsx?${qx}`;
       const al = lista.alertas;
       $('#alertas').innerHTML = al
         ? `Alertas por e-mail para ${esc(al.para.join(', '))}: deadlines em 24 h, gates abertos e datas que mudaram.${al.ultimoEnvio ? ` Último envio ${data(al.ultimoEnvio)}.` : ''}${al.erro ? ` <span class="erro">Falha no envio: ${esc(al.erro)}</span>` : ''}`
         : 'Alertas por e-mail desligados.';
     } catch (e) {
       $('#status').innerHTML = `<span class="erro">${esc(e.message)}</span>`;
-      ['#cartoes', '#proximas', '#mudancas', '#tabela'].forEach((s) => ($(s).innerHTML = ''));
+      ['#cartoes', '#proximas', '#mudancas', '#tabela', '#linha'].forEach((s) => ($(s).innerHTML = ''));
     }
   }
 
@@ -351,6 +403,101 @@
       </tr></thead><tbody>${linhas || '<tr><td colspan="11">Nenhuma atracação com esses filtros.</td></tr>'}</tbody></table></div>`;
   }
 
+  // ---- linha do tempo por terminal
+  // O DSS não informa o berço: cada linha é um navio, do início da estadia (atracação real, prevista ou,
+  // sem elas, a chegada) até a saída prevista. Embaixo, a janela do gate (abertura até o deadline).
+  const DIA_MS = 864e5;
+  const fmtDia = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: '2-digit' });
+  const partesSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const meiaNoiteSP = (ms) => { const [y, m, d] = partesSP.format(new Date(ms)).split('-').map(Number); return Date.UTC(y, m - 1, d, 3); };
+
+  function mostrarLinha(navios, dias) {
+    const agora = Date.now();
+    const ini = meiaNoiteSP(agora - 2 * DIA_MS);
+    const fim = meiaNoiteSP(agora + (Number(dias) > 0 ? Math.min(Number(dias), 30) : 14) * DIA_MS) + DIA_MS;
+    const pos = (ms) => Math.min(100, Math.max(0, ((ms - ini) / (fim - ini)) * 100));
+    const faixa = (a, b, classe, extra = '') => `<span class="${classe}" style="left:${pos(a)}%;width:${Math.max(pos(b) - pos(a), 0.5)}%" ${extra}></span>`;
+
+    const itens = navios
+      .map((n) => {
+        const d = n.datas;
+        const inicio = d.atracacao || d.prevAtracacao || d.prevChegada;
+        if (!inicio) return null;
+        const s = Date.parse(inicio);
+        const e = d.prevSaida ? Date.parse(d.prevSaida) : s + DIA_MS;
+        if (e < s || e < ini || s > fim) return null;
+        return { n, s, e, estimado: !d.atracacao && !d.prevAtracacao, semSaida: !d.prevSaida };
+        // "estimado" só muda o texto da dica: o DSS nunca manda a atracação prevista, então começar pela chegada é o normal.
+      })
+      .filter(Boolean);
+
+    const dias_ = [];
+    for (let t = ini; t < fim; t += DIA_MS) dias_.push(t);
+    const grade = dias_.map((t) => `<span class="gantt-fundo" style="left:${pos(t)}%"></span>`).join('') + (agora >= ini && agora <= fim ? `<span class="gantt-agora" style="left:${pos(agora)}%" title="agora"></span>` : '');
+    const eixo = `<div class="gantt-linha gantt-eixo"><div class="gantt-rotulo suave">Navio</div><div class="gantt-trilho">${dias_.map((t) => `<span class="gantt-dia" style="left:${pos(t)}%">${fmtDia.format(new Date(t + 12 * 36e5)).replace('.', '')}</span>`).join('')}</div></div>`;
+
+    const porTerminal = {};
+    for (const i of itens) (porTerminal[i.n.terminal] ||= []).push(i);
+    const blocos = Object.keys(porTerminal).sort().map((t) => {
+      const linhas = porTerminal[t].sort((a, b) => a.s - b.s).map(({ n, s, e, estimado, semSaida }) => {
+        const d = n.datas;
+        const abertura = d.aberturaGate || d.prevAberturaGate;
+        const gate = abertura && d.deadline && Date.parse(d.deadline) > Date.parse(abertura) ? faixa(Date.parse(abertura), Date.parse(d.deadline), 'gantt-gate', `title="Gate dry ${data(abertura)} até o deadline ${data(d.deadline)}"`) : '';
+        const dl = d.deadline && Date.parse(d.deadline) >= ini && Date.parse(d.deadline) <= fim ? `<span class="gantt-deadline" style="left:${pos(Date.parse(d.deadline))}%" title="Deadline ${data(d.deadline)}"></span>` : '';
+        const titulo = `${n.navio} · ${(ROTULO[n.situacao.navio] || [n.situacao.navio])[0]} · ${estimado ? 'chegada' : d.atracacao ? 'atracou' : 'atracação prevista'} ${data(new Date(s).toISOString())} → ${semSaida ? 'sem saída prevista' : `saída ${data(d.prevSaida)}`}`;
+        const barra = `<button type="button" class="gantt-barra ${esc(n.situacao.navio)}${semSaida ? ' estimado' : ''}" data-chave="${esc(chave(n))}" style="left:${pos(s)}%;width:${Math.max(pos(e) - pos(s), 0.6)}%" title="${esc(titulo)}" aria-label="${esc(titulo)}"></button>`;
+        return `<div class="gantt-linha"><div class="gantt-rotulo">${botaoNavio(n)} <span class="suave">${esc(n.viagem)}</span></div><div class="gantt-trilho">${grade}${gate}${dl}${barra}</div></div>`;
+      });
+      return `<div class="gantt-terminal">${esc(terminal(t))} <span class="suave">· ${linhas.length} navio(s)</span></div>${linhas.join('')}`;
+    });
+
+    $('#linha').innerHTML = itens.length
+      ? `<div class="gantt"><div class="gantt-grade">${eixo}${blocos.join('')}</div></div>
+         <div class="legenda"><span class="l-prev">previsto (da chegada ou atracação até a saída)</span><span class="l-atr">atracado</span><span class="l-est">sem saída prevista (1 dia estimado)</span><span class="l-gate">janela do gate dry</span><span class="l-dl">deadline</span><span class="l-agora">agora</span></div>
+         <p class="suave">O DSS não informa o berço; cada linha é um navio. Clique na barra para ver o detalhe.</p>`
+      : '<p class="suave">Nenhum navio com datas nesse período.</p>';
+  }
+
+  // Tabela ou linha do tempo (lembra a escolha neste navegador).
+  function mostrarVista(vista) {
+    for (const b of document.querySelectorAll('.abas button')) b.setAttribute('aria-selected', String(b.dataset.vista === vista));
+    $('#tabela').hidden = vista !== 'tabela';
+    $('#linha').hidden = vista !== 'linha';
+    try { localStorage.setItem('vista', vista); } catch {}
+  }
+  document.querySelector('.abas').addEventListener('click', (ev) => { const b = ev.target.closest('button[data-vista]'); if (b) mostrarVista(b.dataset.vista); });
+  try { const v = localStorage.getItem('vista'); if (v === 'linha') mostrarVista('linha'); } catch {}
+
+  // ---- qualidade dos dados
+  async function carregarQualidade() {
+    try {
+      mostrarQualidade(await api('/api/qualidade'));
+    } catch (e) {
+      $('#qualidade').innerHTML = `<p class="erro">${esc(e.message)}</p>`;
+    }
+  }
+  function mostrarQualidade({ terminais, texto, historico }) {
+    if (!terminais.length) { $('#qualidade').innerHTML = '<p class="suave">Sem registros.</p>'; return; }
+    const cor = (p) => (p >= 90 ? 'verde' : p >= 50 ? 'amarelo' : 'vermelho');
+    const pctCel = (x) => (x.pct === null ? '<span class="suave" title="nenhum registro em que já deveria existir">—</span>' : `<span class="pill ${cor(x.pct)}">${x.pct}%</span> <span class="suave">${x.preenchidos}/${x.total}</span>`);
+    const rotuloGeral = (p) => ({ data_lib_reefer: 'Liberação reefer<sup>1</sup>', data_prev_lib_reefer: 'Liberação reefer prevista<sup>1</sup>' }[p.campo] || esc(p.rotulo));
+    const linha = (rotulo, cel) => `<tr><td>${rotulo}</td>${terminais.map((t) => `<td class="num">${cel(t)}</td>`).join('')}</tr>`;
+    const grupo = (titulo) => `<tr><td class="grupo" colspan="${terminais.length + 1}">${titulo}</td></tr>`;
+    const tabela = `<div class="tabela"><table class="qualidade"><thead><tr><th></th>${terminais.map((t) => `<th style="text-align:right">${esc(t.nome)}<div class="suave" style="font-weight:400">${t.registros} registros</div></th>`).join('')}</tr></thead><tbody>
+      ${grupo('Datas previstas preenchidas')}
+      ${terminais[0].previstas.map((p, i) => linha(rotuloGeral(p), (t) => pctCel(t.previstas[i]))).join('')}
+      ${grupo('Datas reais informadas quando já deveriam existir')}
+      ${terminais[0].reais.map((p, i) => linha(rotuloGeral(p), (t) => pctCel(t.reais[i]))).join('')}
+      ${grupo('Outros')}
+      ${linha('Armador válido', (t) => pctCel({ ...t.armador, preenchidos: t.armador.corretos }))}
+      ${linha('Datas que mudaram (7 dias)', (t) => `${t.mudancas.datas} <span class="suave">em ${t.mudancas.navios} navio(s)</span>`)}
+    </tbody></table></div><p class="suave"><sup>1</sup> Na BTP e na Santos Brasil, o DSS usa os campos de liberação reefer para a abertura do gate reefer.</p>`;
+    const NIVEL = { alto: ['alto', 'vermelho'], medio: ['médio', 'amarelo'], baixo: ['baixo', 'cinza'] };
+    const achados = `<div class="colunas" style="margin-top:14px">${terminais.map((t) => `<div><h2>${esc(t.nome)}</h2>${t.achados.length ? `<ul class="achados">${t.achados.map((a) => `<li><span class="pill ${NIVEL[a.nivel][1]}">${NIVEL[a.nivel][0]}</span> ${esc(a.texto)}</li>`).join('')}</ul>` : '<p class="suave">Nenhum problema encontrado.</p>'}</div>`).join('')}</div>`;
+    const resumo = texto ? `<details style="margin-top:12px"><summary>Texto para enviar ao DSS ou aos terminais</summary><textarea readonly id="texto-qualidade">${esc(texto)}</textarea><button class="leve" type="button" id="copiar-qualidade">Copiar</button></details>` : '';
+    $('#qualidade').innerHTML = tabela + achados + resumo + (historico === 'memoria' ? '<p class="suave">As mudanças contam só desde o último reinício do servidor (histórico em memória).</p>' : '');
+  }
+
   $('#filtros').addEventListener('submit', (ev) => { ev.preventDefault(); carregar(); });
   $('#limpar').addEventListener('click', () => { $('#filtros').reset(); carregar(); });
   // Clicar num cartão mantém o período e a opção de encerrados, e troca só o filtro do cartão.
@@ -368,14 +515,20 @@
   });
   let ultimasMudancas = [[], null];
   document.addEventListener('click', (ev) => {
-    const b = ev.target.closest('button.nome[data-chave]');
+    const b = ev.target.closest('button[data-chave]');
     if (b) return abrirDetalhe(b.dataset.chave);
+    if (ev.target.id === 'copiar-qualidade') {
+      const t = $('#texto-qualidade');
+      (navigator.clipboard?.writeText(t.value) || Promise.reject()).then(() => (ev.target.textContent = 'Copiado'), () => { t.select(); document.execCommand('copy'); ev.target.textContent = 'Copiado'; });
+      return;
+    }
     if (ev.target.id === 'todas-mudancas') { mostrarTodasMudancas = !mostrarTodasMudancas; mostrarMudancas(...ultimasMudancas); }
   });
   $('#fechar').addEventListener('click', () => $('#detalhe').close());
   $('#detalhe').addEventListener('click', (ev) => { if (ev.target === $('#detalhe')) $('#detalhe').close(); });
   carregar();
-  setInterval(() => carregar(), 5 * 60 * 1000);
+  carregarQualidade();
+  setInterval(() => { carregar(); carregarQualidade(); }, 5 * 60 * 1000);
 </script>
 </body>
 </html>

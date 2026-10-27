@@ -7,6 +7,9 @@
 //   GET /api/resumo?horas=48 (+ os mesmos filtros)
 //   GET /api/mudancas?horas=24&navio=&terminal=&campo=   histórico de mudanças das datas
 //   GET /api/navio?chave=terminal|NAVIO|VIAGEM           detalhe do navio: datas atuais + todas as mudanças
+//   GET /api/navios.xlsx (+ filtros)                      Excel da visão filtrada e das mudanças de 7 dias
+//   GET /api/qualidade                                    qualidade dos dados por terminal
+//   GET /api/alertas                                      situação dos alertas por e-mail
 //   GET /api/dss/bruto                    resposta original do DSS, sem tratamento
 //   GET /api/health                       status, idade do cache e último erro
 //
@@ -22,6 +25,8 @@ const crypto = require('node:crypto');
 const { criarCliente, filtrar, resumir, ErroDss } = require('./dss');
 const { iniciarHistorico, criarMemoria, chaveDe, rotuloCampo } = require('./historico');
 const { criarAlertas, criarEnvio } = require('./alertas');
+const { criarXlsx } = require('./xlsx');
+const { avaliarQualidade, textoQualidade, PROBLEMAS } = require('./qualidade');
 
 const env = process.env;
 const config = {
@@ -50,6 +55,62 @@ function criarClientePadrao(aoAtualizar = null) {
 
 const HORA = 36e5;
 const comRotulo = (m) => ({ ...m, rotulo: rotuloCampo(m.campo, m.terminal) });
+
+// ------------------------------------------------------------------ exportação para Excel
+const SITUACAO = {
+  previsto: 'Previsto', aguardando_atracacao: 'Aguardando atracação', chegada_passou: 'Chegada passou', atracado: 'Atracado', encerrado: 'Encerrado',
+  aguardando: 'Aguardando', aberto: 'Aberto', sem_dado: 'Sem dado', liberado: 'Liberado', atrasado: 'Atrasado',
+};
+const TERMINAL = { btp: 'BTP', santos_brasil: 'Santos Brasil', embraport: 'Embraport (DPW)' };
+const sit = (v) => SITUACAO[v] || v || '';
+const dssIso = (v) => (v ? `${String(v).replace(' ', 'T')}Z` : null);
+
+function planilhaNavios(navios) {
+  const colunas = [
+    ['Navio', 'texto', 24], ['Viagem', 'texto', 12], ['Armador', 'texto', 10], ['Armador deduzido', 'texto', 12], ['Terminal', 'texto', 16], ['Situação', 'texto', 20],
+    ['Chegada prevista', 'data'], ['Atracação prevista', 'data'], ['Atracação', 'data'], ['Espera atracação (h)', 'numero', 12], ['Saída prevista', 'data'],
+    ['Gate dry', 'texto', 12], ['Abertura gate prevista', 'data'], ['Abertura gate', 'data'],
+    ['Gate reefer', 'texto', 12], ['Abertura gate reefer prevista', 'data'], ['Abertura gate reefer', 'data'],
+    ['Deadline', 'data'], ['Horas até deadline', 'numero', 12],
+    ['Liberação dry', 'texto', 12], ['Liberação dry prevista', 'data'], ['Liberação dry real', 'data'],
+    ['Liberação reefer', 'texto', 12], ['Liberação reefer prevista', 'data'], ['Liberação reefer real', 'data'],
+    ['Datas que mudaram (24 h)', 'numero', 12], ['Dados ajustados', 'texto', 40],
+  ];
+  return {
+    nome: 'Navios',
+    colunas: colunas.map(([titulo, tipo, largura]) => ({ titulo, tipo, largura })),
+    linhas: navios.map((n) => [
+      n.navio, n.viagem, n.armador, n.armadorOrigem && n.armadorOrigem !== 'dss' ? n.armadorOrigem : '', TERMINAL[n.terminal] || n.terminal, sit(n.situacao.navio),
+      n.datas.prevChegada, n.datas.prevAtracacao, n.datas.atracacao, n.horas.esperaAtracacao === null ? null : Math.round(n.horas.esperaAtracacao), n.datas.prevSaida,
+      sit(n.situacao.gate), n.datas.prevAberturaGate, n.datas.aberturaGate,
+      sit(n.situacao.gateReefer), n.datas.prevAberturaGateReefer, n.datas.aberturaGateReefer,
+      n.datas.deadline, n.horas.ateDeadline,
+      sit(n.situacao.dry), n.datas.prevLiberacaoDry, n.datas.liberacaoDry,
+      sit(n.situacao.reefer), n.datas.prevLiberacaoReefer, n.datas.liberacaoReefer,
+      n.mudancas24h || 0, n.qualidade.filter((q) => PROBLEMAS[q.problema]).map((q) => `${q.campo}: ${PROBLEMAS[q.problema]}`).join('; '),
+    ]),
+  };
+}
+
+function planilhaMudancas(mudancas) {
+  return {
+    nome: 'Mudanças (7 dias)',
+    colunas: [
+      { titulo: 'Quando', tipo: 'data' }, { titulo: 'Navio', largura: 24 }, { titulo: 'Viagem', largura: 12 }, { titulo: 'Terminal', largura: 16 },
+      { titulo: 'Campo', largura: 26 }, { titulo: 'De', tipo: 'data' }, { titulo: 'Para', tipo: 'data' }, { titulo: 'Diferença (h)', tipo: 'numero', largura: 12 }, { titulo: 'Observação', largura: 22 },
+    ],
+    linhas: mudancas
+      .filter((m) => m.campo !== 'armador')
+      .map((m) => {
+        const registro = m.campo === 'registro';
+        const de = registro ? null : dssIso(m.de);
+        const para = registro ? null : dssIso(m.para);
+        const dif = de && para ? Math.round((Date.parse(para) - Date.parse(de)) / HORA) : null;
+        const obs = registro ? { novo: 'entrou na lista do DSS', removido: 'saiu da lista do DSS', voltou: 'voltou à lista do DSS' }[m.para] : !de ? 'data informada' : !para ? 'data apagada' : '';
+        return [m.em, m.navio, m.viagem, TERMINAL[m.terminal] || m.terminal, rotuloCampo(m.campo, m.terminal), de, para, dif, obs];
+      }),
+  };
+}
 
 function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(), alertas = null) {
   async function dados(q) {
@@ -130,6 +191,21 @@ function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(
       const r = await dados(q);
       return { consultadoEm: r.consultadoEm, aviso: r.aviso, ...resumir(filtrar(r.registros, q), { horas: horasResumo(q) }) };
     },
+    // Excel da visão filtrada (mesmos filtros de /api/navios) + mudanças dos últimos 7 dias desses navios.
+    '/api/navios.xlsx': async (q) => {
+      const l = lista(await dados(q), q);
+      const chaves = new Set(l.navios.map((n) => n.chave));
+      const mudancas = (await historico.listar({ desde: new Date(Date.now() - 7 * 24 * HORA).toISOString(), limite: 20000 })).filter((m) => chaves.has(m.chave));
+      const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+      return { arquivo: criarXlsx([planilhaNavios(l.navios), planilhaMudancas(mudancas)]), nome: `portal-de-navios-${hoje}.xlsx`, tipo: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+    },
+    // Qualidade dos dados por terminal (sobre tudo o que o DSS enviou, sem filtros).
+    '/api/qualidade': async () => {
+      const r = await dados({});
+      const mudancas = await historico.listar({ desde: new Date(Date.now() - 7 * 24 * HORA).toISOString(), limite: 50000 });
+      const terminais = avaliarQualidade(r.bruto.registros, r.registros, mudancas);
+      return { consultadoEm: r.consultadoEm, historico: historico.tipo, terminais, texto: textoQualidade(terminais) };
+    },
     // Situação dos alertas por e-mail: regras, fila, último envio e último erro.
     '/api/alertas': async () => (alertas ? alertas.estado() : { ativo: false }),
     // Envia um e-mail de teste para ALERTA_PARA (no máximo um a cada 10 min).
@@ -145,10 +221,11 @@ function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(
   };
 
   /** Envia com ETag (304 quando o navegador já tem a mesma versão) e gzip quando o navegador aceita. */
-  function enviar(req, res, status, corpo, tipo = 'application/json; charset=utf-8') {
+  function enviar(req, res, status, corpo, tipo = 'application/json; charset=utf-8', extras = {}) {
     let buffer = Buffer.isBuffer(corpo) ? corpo : Buffer.from(typeof corpo === 'string' ? corpo : JSON.stringify(corpo));
     const etag = `W/"${crypto.createHash('sha1').update(buffer).digest('base64url').slice(0, 22)}"`;
     const cabecalhos = {
+      ...extras,
       'content-type': tipo,
       'cache-control': 'no-cache',
       etag,
@@ -159,7 +236,7 @@ function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(
       res.writeHead(304, cabecalhos);
       return res.end();
     }
-    if (buffer.length > 1024 && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
+    if (buffer.length > 1024 && !/zip|sheet/.test(tipo) && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
       buffer = zlib.gzipSync(buffer, { level: 6 });
       cabecalhos['content-encoding'] = 'gzip';
     }
@@ -175,7 +252,9 @@ function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(
       if (url.pathname === '/' || url.pathname === '/index.html') return enviar(req, res, 200, PAGINA, 'text/html; charset=utf-8');
       const rota = rotas[url.pathname.replace(/\/$/, '')];
       if (!rota) return enviar(req, res, 404, { erro: `Rota ${url.pathname} não existe.` });
-      return enviar(req, res, 200, await rota(Object.fromEntries(url.searchParams)));
+      const resultado = await rota(Object.fromEntries(url.searchParams));
+      if (resultado?.arquivo) return enviar(req, res, 200, resultado.arquivo, resultado.tipo, { 'content-disposition': `attachment; filename="${resultado.nome}"` });
+      return enviar(req, res, 200, resultado);
     } catch (e) {
       if (e instanceof ErroDss) return enviar(req, res, e.status, { erro: e.message, ...(e.detalhes ? { detalhes: e.detalhes } : {}) });
       console.error(e);

@@ -54,6 +54,8 @@ Os códigos 400, 401, 403 e 500 chegam com a mensagem do DSS. Por exemplo, 403 s
 | `GET /api/resumo?horas=48` | Contagens por terminal, armador, situação e gate, mais as listas das próximas horas |
 | `GET /api/mudancas?horas=24` | Histórico de mudanças (filtros: `navio`, `terminal`, `campo`, `chave`, `desde`, `limite`) |
 | `GET /api/navio?chave=btp\|MSCINSA\|NA642R` | Detalhe do navio: datas atuais e todas as mudanças registradas |
+| `GET /api/navios.xlsx` (+ filtros) | Excel da visão filtrada: aba "Navios" (todas as datas, situações e ajustes) e aba "Mudanças (7 dias)" |
+| `GET /api/qualidade` | Qualidade dos dados por terminal, com achados e texto pronto para enviar ao DSS |
 | `GET /api/alertas` | Alertas por e-mail: regras, fila, último envio e último erro |
 | `GET /api/alertas/teste` | Envia um e-mail de teste para `ALERTA_PARA` (no máximo um a cada 10 min) |
 | `GET /api/dss/bruto` | Resposta original do DSS, sem tratamento (consulta na hora) |
@@ -83,6 +85,18 @@ Também ficam registrados os navios que entram na lista do DSS, saem dela ou vol
 - **Painel:** bloco "Mudanças nas últimas 24 horas" (só dos navios filtrados), com quanto a data adiou ou antecipou, e o selo "mudou N×" na tabela.
 - **Detalhe do navio:** clique no nome do navio para ver a sequência de datas (chegada, gates, deadline, atracação, liberações, saída), o que já passou e o que vem, e todas as mudanças registradas.
 - **Onde fica:** com `DATABASE_URL`, no PostgreSQL (tabelas `navios_estado` e `navios_mudancas`, criadas sozinhas; 180 dias guardados). Sem ela, ou se o banco não responder, em memória, e o histórico recomeça a cada reinício do servidor.
+
+## Excel, linha do tempo e qualidade dos dados
+
+- **Exportar Excel:** o botão ao lado dos filtros baixa um `.xlsx` com exatamente o que está filtrado na tela. As datas vêm como datas do Excel, no horário de Brasília, com filtro automático e cabeçalho congelado. A segunda aba traz as mudanças de datas dos últimos 7 dias desses navios.
+- **Linha do tempo:** a aba "Linha do tempo", ao lado da tabela, mostra cada navio por terminal, da chegada (ou atracação) até a saída prevista, com a janela do gate dry (abertura até o deadline), o deadline e a linha do "agora". O DSS não informa o berço, então cada linha é um navio. Clicar na barra abre o detalhe.
+- **Qualidade dos dados por terminal:**
+  - quanto de cada data prevista o DSS preenche;
+  - quanto das datas reais é informado quando já deveria existir (a prevista passou há mais de 24 h);
+  - armador válido e quantas datas mudaram em 7 dias;
+  - achados por gravidade e um texto pronto para copiar e mandar ao DSS ou aos terminais.
+
+  Tudo isso é calculado sobre todos os registros, sem os filtros da tela.
 
 ## Alertas por e-mail
 
@@ -158,6 +172,8 @@ Requer Node 20+. O único pacote é o `pg`, usado só quando há `DATABASE_URL` 
 src/dss.js         cliente da API do DSS, normalização, situações, filtros e resumo
 src/historico.js   histórico de mudanças (PostgreSQL ou memória)
 src/alertas.js     alertas por e-mail (regras, fila, Resend/Brevo)
+src/qualidade.js   qualidade dos dados por terminal
+src/xlsx.js        gerador de .xlsx sem dependências
 src/server.js      rotas HTTP e página
 public/index.html  painel e detalhe do navio
 test/              testes com o DSS simulado (PG_TESTE_URL=... testa também com PostgreSQL)
