@@ -17,5 +17,15 @@ CREATE TABLE IF NOT EXISTS conteineres (
 -- Bancos criados por versões anteriores.
 ALTER TABLE conteineres ADD COLUMN IF NOT EXISTS navio_viagem VARCHAR(50);
 
+-- Planilhas da BTP importadas (a mais recente é a usada na previsão e na comparação com o DSS).
+CREATE TABLE IF NOT EXISTS importacoes_btp (
+  id            BIGSERIAL   PRIMARY KEY,
+  importado_em  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  nome_arquivo  TEXT,
+  formato       VARCHAR(10),
+  total         INTEGER     NOT NULL,
+  registros     JSONB       NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_conteineres_situacao ON conteineres (situacao);
 CREATE INDEX IF NOT EXISTS idx_conteineres_navio ON conteineres (navio_nome);

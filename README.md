@@ -2,7 +2,7 @@
 
 API que **prevê a entrada de contêineres a partir das atracações** informadas pela API **Portal de Navios do DSS** (TMS, módulo `tms_integr_portal_navios`).
 
-O DSS é a única fonte de dados externa. Os contêineres monitorados ficam num cadastro próprio (PostgreSQL).
+Segundo a documentação do DSS, essas atracações são capturadas dos portais dos terminais (BTP, Santos Brasil e Embraport). Como complemento, dá para **importar a planilha da BTP** (botão Download do Portal do Cliente BTP), que traz chegada e saída reais, navio *na barra*, berço, RAP e serviço. Os contêineres monitorados ficam num cadastro próprio (PostgreSQL).
 
 ## Como funciona
 
@@ -13,18 +13,32 @@ O DSS é a única fonte de dados externa. Os contêineres monitorados ficam num 
 3. Você cadastra cada contêiner com **o nome do navio como aparece no DSS** e, se quiser, **a viagem**. Com a viagem, o contêiner só entra naquela viagem; sem ela, entra em qualquer viagem do navio.
 4. A previsão mostra, para cada atracação, quais contêineres monitorados vêm nela, agrupados por dia. Contêineres sem atracação na janela aparecem em `semAtracacaoNaJanela`, para conferir nome e viagem.
 
+## Planilha da BTP
+
+No [Portal do Cliente BTP › Lista de atracação](https://portaldocliente.btp.com.br/sistemas/processos-logisticos/ConsultasLivres/listaatracacaoindex), clique em **Download** e importe o arquivo pela página inicial (ou `POST /api/btp/planilha`).
+
+- **Formatos:** `.xlsx`, `.xls` exportado como tabela HTML (formato comum em sites) e `.csv`. O `.xls` binário antigo (Excel 97-2003) é recusado com a orientação de salvar como `.xlsx` ou CSV.
+- **Colunas** reconhecidas pelo título, em qualquer ordem: RAP, Navio, Viagem, Agência, Dt. Prev. Chegada, Dt. Chegada, Dt. Prev. Atrac., Dt. Atracação, Dt. Prev. Saída, Dt. Saída, Abertura de Gate Dry, Abertura de Gate Reefer, Dead-Line, Serviço e Berço.
+- **Horário:** a BTP usa o horário de Brasília; as datas são convertidas para UTC, como as do DSS.
+- **Status**, com a mesma regra da tela da BTP: tem saída → *desatracado*; tem atracação → *atracado*; tem chegada → *na barra*; só previsões → *previsto*.
+- **Na previsão,** a planilha mais recente complementa cada atracação do terminal BTP (status, berço, RAP, chegada e saída reais). Se o DSS estiver indisponível, a previsão usa a planilha como fonte e mostra um aviso.
+- **Comparação** (`GET /api/btp/comparacao`): cruza a planilha com as atracações `btp` do DSS por navio e viagem e aponta diferenças acima de `TOLERANCIA_HORAS` (1 h), navios com viagem diferente e navios que só aparecem de um lado.
+
+O site da BTP não tem API, usa proteção contra robôs (Incapsula) e reCAPTCHA. Por isso a importação é feita com o arquivo baixado, e não lendo o site automaticamente.
+
 ## Publicação no Render
 
 O serviço `portal-de-navios` publica automaticamente a cada commit na branch `main`. Variáveis em **portal-de-navios › Environment**:
 
 | Variável | Obrigatória | Para quê |
 |---|---|---|
-| `NAVIOS_OF_DSS` (ou `DSS_URL`) | sim | Endereço completo do endpoint Portal de Navios do DSS (`https://…`). No Swagger: **Try it out › Execute › Request URL** |
+| `DSS_URL` (ou `NAVIOS_OF_DSS`) | sim | Endereço do endpoint: `https://costalog.dssinformatica.com.br/wsdss/navios/listarNavios` |
 | `DSS_USUARIO`, `DSS_SENHA` | sim | Login do DSS (Basic Auth). Também podem ir embutidos na URL: `https://usuario:senha@host/caminho` |
 | `DSS_TOKEN` | não | Use no lugar de usuário/senha se o DSS autenticar por token (`Authorization: Bearer`) |
 | `DATABASE_URL` | recomendada | *Internal Database URL* do `portal-de-navios-db`. Sem ela, os contêineres ficam em memória e somem quando o serviço reinicia |
 | `TERMINAL_PADRAO` | não | Terminal usado quando a previsão é pedida sem filtro (ex.: `btp`) |
 | `DIAS_PADRAO` | não | Tamanho padrão da janela (7 dias) |
+| `TOLERANCIA_HORAS` | não | Diferença entre DSS e planilha da BTP que vira divergência (1 h) |
 | `VERIFICAR_FONTES` | não | `false` desliga a consulta de diagnóstico ao DSS feita ao iniciar |
 | `INTERVALO_TEMPO_REAL_MS`, `TIMEOUT_HTTP_MS`, `CORS_ORIGIN` | não | Ajustes finos |
 
@@ -42,6 +56,9 @@ Ao iniciar, o servidor escreve no log (aba **Logs** do Render):
 | GET | `/api/health` | Status, banco em uso e se o DSS está configurado |
 | GET | `/api/previsao-entrada?dias=7&terminal=btp` | **Principal.** Atracações na janela + contêineres monitorados em cada uma |
 | GET | `/api/dss/atracacoes?terminal=btp` | Todas as atracações do DSS, normalizadas |
+| POST | `/api/btp/planilha?nome=arquivo.xlsx` | Importa a planilha da BTP (o corpo é o próprio arquivo, até 10 MB) |
+| GET | `/api/btp/lineup` | Última planilha importada (registros em UTC e contagem por status) |
+| GET | `/api/btp/comparacao?tolerancia=1` | Planilha da BTP × DSS |
 | POST | `/api/conteineres` | Cadastra ou atualiza um contêiner monitorado |
 | GET | `/api/conteineres` | Lista os monitorados (`?situacao=monitorando`) |
 | GET | `/api/conteineres/{numero}` | Detalhe de um contêiner |
@@ -130,11 +147,14 @@ src/
   realtime.js            WebSocket /ws
   config.js              variáveis de ambiente
   util.js                validações e dígito verificador ISO 6346
-  db/schema.sql          tabela conteineres
+  db/schema.sql          tabelas conteineres e importacoes_btp
   db/index.js            armazenamento PostgreSQL ou memória
   services/dss.js        API Portal de Navios do DSS
+  services/btp.js        planilha da BTP: colunas, datas, status e comparação com o DSS
+  services/planilha.js   leitura de .xlsx, .xls (HTML) e .csv sem dependências
   services/previsao.js   previsão de entrada
   services/http.js       chamada HTTP com tempo limite
 public/index.html        página para usar a API
+test/arquivos/           planilhas de exemplo da BTP nos formatos aceitos
 render.yaml              blueprint do Render
 ```

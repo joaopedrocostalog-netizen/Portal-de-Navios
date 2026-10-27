@@ -15,8 +15,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
-      - key: NAVIOS_OF_DSS
-        sync: false
+      - key: DSS_URL
+        value: https://costalog.dssinformatica.com.br/wsdss/navios/listarNavios
       - key: DSS_USUARIO
         sync: false
       - key: DSS_SENHA

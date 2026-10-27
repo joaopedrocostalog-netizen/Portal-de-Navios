@@ -9,6 +9,7 @@ const path = require('node:path');
 const config = require('./config');
 const pacote = require('../package.json');
 const dss = require('./services/dss');
+const btp = require('./services/btp');
 const { preverEntrada } = require('./services/previsao');
 const {
   ErroApi,
@@ -23,29 +24,33 @@ const PASTA_PUBLICA = path.join(__dirname, '..', 'public');
 const LIMITE_CORPO = 100 * 1024;
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
-function lerCorpo(req) {
+function lerBuffer(req, limite) {
   return new Promise((resolve, reject) => {
     let tamanho = 0;
     const partes = [];
     req.on('data', (parte) => {
       tamanho += parte.length;
-      if (tamanho > LIMITE_CORPO) {
-        reject(new ErroApi('Corpo da requisição muito grande.', { status: 413 }));
+      if (tamanho > limite) {
+        reject(new ErroApi(`Corpo da requisição muito grande (máximo ${Math.round(limite / 1024)} KB).`, { status: 413 }));
         req.destroy();
         return;
       }
       partes.push(parte);
     });
-    req.on('end', () => {
-      const texto = Buffer.concat(partes).toString('utf8');
-      if (!texto.trim()) return resolve({});
-      try {
-        resolve(JSON.parse(texto));
-      } catch {
-        reject(new ErroApi('JSON inválido no corpo da requisição.', { status: 400 }));
-      }
-    });
+    req.on('end', () => resolve(Buffer.concat(partes)));
     req.on('error', reject);
+  });
+}
+
+function lerCorpo(req) {
+  return lerBuffer(req, LIMITE_CORPO).then((buffer) => {
+    const texto = buffer.toString('utf8');
+    if (!texto.trim()) return {};
+    try {
+      return JSON.parse(texto);
+    } catch {
+      throw new ErroApi('JSON inválido no corpo da requisição.', { status: 400 });
+    }
   });
 }
 
@@ -82,13 +87,13 @@ function criarApp(store) {
   const rotas = [];
 
   /** Registra uma rota. O handler recebe { params, query, corpo } e devolve { status?, corpo?, cabecalhos? }. */
-  function rota(metodo, caminho, handler) {
+  function rota(metodo, caminho, handler, opcoes = {}) {
     const chaves = [];
     const padrao = caminho.replace(/:(\w+)/g, (_, chave) => {
       chaves.push(chave);
       return '([^/]+)';
     });
-    rotas.push({ metodo, regex: new RegExp(`^${padrao}/?$`), chaves, handler });
+    rotas.push({ metodo, regex: new RegExp(`^${padrao}/?$`), chaves, handler, opcoes });
   }
 
   // ------------------------------------------------------------------ status
@@ -168,6 +173,50 @@ function criarApp(store) {
     return { status: 204 };
   });
 
+  // ------------------------------------------------------------------ planilha da BTP
+  // Corpo = o próprio arquivo (xlsx, xls em HTML ou CSV); nome do arquivo em ?nome=.
+  rota(
+    'POST',
+    '/api/btp/planilha',
+    async ({ query, corpo }) => {
+      const nomeArquivo = query.nome ? String(query.nome).slice(0, 200) : null;
+      const r = btp.importarPlanilha(corpo);
+      const importacao = await store.salvarImportacaoBtp({ nomeArquivo, formato: r.formato, registros: r.registros });
+      return {
+        status: 201,
+        corpo: {
+          importadoEm: importacao.importadoEm,
+          nomeArquivo,
+          formato: r.formato,
+          total: r.registros.length,
+          porStatus: btp.contarStatus(r.registros),
+          colunasReconhecidas: r.colunas,
+          avisos: r.avisos,
+        },
+      };
+    },
+    { corpoBruto: true, limite: 10 * 1024 * 1024 },
+  );
+
+  rota('GET', '/api/btp/lineup', async () => {
+    const imp = await store.ultimaImportacaoBtp();
+    if (!imp) throw new ErroApi('Nenhuma planilha da BTP importada ainda.', { status: 404 });
+    return { corpo: { ...imp, timezone: 'UTC', porStatus: btp.contarStatus(imp.registros) } };
+  });
+
+  rota('GET', '/api/btp/comparacao', async ({ query }) => {
+    const imp = await store.ultimaImportacaoBtp();
+    if (!imp) throw new ErroApi('Nenhuma planilha da BTP importada ainda.', { status: 404 });
+    const atracacoes = await dss.atracacoes();
+    const toleranciaHoras = query.tolerancia !== undefined ? Math.max(0, Number(query.tolerancia) || 0) : config.toleranciaHoras;
+    return {
+      corpo: {
+        planilha: { importadoEm: imp.importadoEm, nomeArquivo: imp.nomeArquivo, total: imp.total },
+        ...btp.compararComDss(imp.registros, atracacoes.dados, { toleranciaHoras }),
+      },
+    };
+  });
+
   // ------------------------------------------------------------------ previsão
   rota('GET', '/api/previsao-entrada', async ({ query }) => {
     const dias = normalizarDias(query.dias, config.diasPadrao);
@@ -215,7 +264,10 @@ function criarApp(store) {
         params[chave] = decodeURIComponent(escolhida.achado[i + 1]);
       });
       const query = Object.fromEntries(url.searchParams);
-      const corpo = req.method === 'POST' ? await lerCorpo(req) : undefined;
+      let corpo;
+      if (req.method === 'POST') {
+        corpo = escolhida.r.opcoes.corpoBruto ? await lerBuffer(req, escolhida.r.opcoes.limite) : await lerCorpo(req);
+      }
 
       const resultado = (await escolhida.r.handler({ params, query, corpo })) || {};
       return enviar(resultado.status || 200, resultado.corpo, resultado.cabecalhos);

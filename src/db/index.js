@@ -38,8 +38,17 @@ function iso(valor) {
 // ---------------------------------------------------------------------------
 function criarMemoria() {
   const conteineres = new Map();
+  let importacaoBtp = null;
+  let proximoId = 1;
 
   return {
+    async salvarImportacaoBtp({ nomeArquivo, formato, registros }) {
+      importacaoBtp = { id: proximoId++, importadoEm: new Date().toISOString(), nomeArquivo, formato, total: registros.length, registros };
+      return { ...importacaoBtp };
+    },
+    async ultimaImportacaoBtp() {
+      return importacaoBtp ? { ...importacaoBtp } : null;
+    },
     tipo: 'memoria',
     async iniciar() {},
     async encerrar() {},
@@ -92,8 +101,32 @@ function criarPostgres(url) {
     return obj;
   }
 
+  function importacaoDeLinha(l) {
+    return {
+      id: Number(l.id),
+      importadoEm: iso(l.importado_em),
+      nomeArquivo: l.nome_arquivo,
+      formato: l.formato,
+      total: l.total,
+      registros: typeof l.registros === 'string' ? JSON.parse(l.registros) : l.registros,
+    };
+  }
+
   return {
     tipo: 'postgres',
+    async salvarImportacaoBtp({ nomeArquivo, formato, registros }) {
+      const { rows } = await pool.query(
+        'INSERT INTO importacoes_btp (nome_arquivo, formato, total, registros) VALUES ($1, $2, $3, $4) RETURNING *',
+        [nomeArquivo, formato, registros.length, JSON.stringify(registros)],
+      );
+      // Guarda só as 30 importações mais recentes.
+      await pool.query('DELETE FROM importacoes_btp WHERE id NOT IN (SELECT id FROM importacoes_btp ORDER BY id DESC LIMIT 30)');
+      return importacaoDeLinha(rows[0]);
+    },
+    async ultimaImportacaoBtp() {
+      const { rows } = await pool.query('SELECT * FROM importacoes_btp ORDER BY id DESC LIMIT 1');
+      return rows[0] ? importacaoDeLinha(rows[0]) : null;
+    },
     async iniciar() {
       const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
       await pool.query(sql);

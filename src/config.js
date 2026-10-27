@@ -29,6 +29,8 @@ function carregar() {
 
     terminalPadrao: (process.env.TERMINAL_PADRAO || '').trim().toLowerCase(),
     diasPadrao: numero(process.env.DIAS_PADRAO, 7),
+    // Diferença (em horas) entre DSS e planilha da BTP a partir da qual a comparação aponta divergência.
+    toleranciaHoras: numero(process.env.TOLERANCIA_HORAS, 1),
     verificarFontes: process.env.VERIFICAR_FONTES !== 'false',
 
     intervaloTempoRealMs: numero(process.env.INTERVALO_TEMPO_REAL_MS, 60000),

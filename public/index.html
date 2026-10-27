@@ -46,6 +46,16 @@
     details { margin-top: 10px; }
     pre { background: var(--fundo); border: 1px solid var(--borda); border-radius: 6px; padding: 10px; overflow: auto; max-height: 420px; font-size: 12px; }
     .muted { color: var(--suave); font-size: 13px; }
+    .pill.st-previsto { background: #e8eefc; color: #2c3e7a; }
+    .pill.st-na_barra { background: #fbf7c2; color: #5c5300; }
+    .pill.st-atracado { background: #ffe1c2; color: #7a3d00; }
+    .pill.st-desatracado { background: #d9f5d9; color: #1d5c1d; }
+    @media (prefers-color-scheme: dark) {
+      .pill.st-previsto { background: #23305a; color: #c9d6ff; }
+      .pill.st-na_barra { background: #4a4300; color: #fff6a6; }
+      .pill.st-atracado { background: #5a3000; color: #ffd2a6; }
+      .pill.st-desatracado { background: #1d3d1d; color: #b7efb7; }
+    }
   </style>
 </head>
 <body>
@@ -67,6 +77,18 @@
       <button type="submit">Consultar</button>
     </form>
     <div id="previsao"></div>
+  </section>
+
+  <section>
+    <h2>Planilha da BTP</h2>
+    <p class="muted">No <a href="https://portaldocliente.btp.com.br/sistemas/processos-logisticos/ConsultasLivres/listaatracacaoindex" target="_blank" rel="noopener">Portal do Cliente BTP › Lista de atracação</a>, clique em <strong>Download</strong> e importe o arquivo aqui (.xlsx, .xls exportado pelo site ou .csv). A BTP traz o que o DSS não tem: chegada e saída reais, navio <em>na barra</em>, berço, RAP e serviço.</p>
+    <form id="form-btp">
+      <label>Arquivo<input type="file" name="arquivo" accept=".xlsx,.xls,.csv,.txt,.html" required></label>
+      <button type="submit">Importar planilha</button>
+      <button type="button" class="secundario" id="btn-comparar">Comparar com o DSS</button>
+    </form>
+    <div id="btp"></div>
+    <div id="comparacao"></div>
   </section>
 
   <section>
@@ -107,12 +129,65 @@
   const erro = (alvo, e) => { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; };
   const bruto = (obj) => `<details><summary>Ver JSON completo</summary><pre>${esc(JSON.stringify(obj, null, 2))}</pre></details>`;
 
+  const NOMES_STATUS = { previsto: 'previsto', na_barra: 'na barra', atracado: 'atracado', desatracado: 'desatracado' };
+  const pillStatus = (st) => `<span class="pill st-${esc(st)}">${esc(NOMES_STATUS[st] || st)}</span>`;
+
+  function mostrarResumoBtp(c) {
+    const st = c.porStatus;
+    return `<p><span class="pill ok">Planilha</span> ${esc(c.nomeArquivo || 'sem nome')} · importada em ${data(c.importadoEm)} · ${c.total} navios: ${pillStatus('previsto')} ${st.previsto} ${pillStatus('na_barra')} ${st.na_barra} ${pillStatus('atracado')} ${st.atracado} ${pillStatus('desatracado')} ${st.desatracado}</p>`;
+  }
+
+  async function carregarBtp() {
+    try {
+      $('#btp').innerHTML = mostrarResumoBtp(await api('/api/btp/lineup'));
+    } catch {
+      $('#btp').innerHTML = '<p class="muted">Nenhuma planilha importada ainda.</p>';
+    }
+  }
+
+  $('#form-btp').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const arquivo = ev.target.arquivo.files[0];
+    const alvo = $('#btp');
+    if (!arquivo) { alvo.innerHTML = '<p class="erro">Escolha o arquivo baixado do site da BTP.</p>'; return; }
+    alvo.innerHTML = '<p class="muted">Importando…</p>';
+    try {
+      const c = await api(`/api/btp/planilha?nome=${encodeURIComponent(arquivo.name)}`, { method: 'POST', body: arquivo, headers: { 'content-type': 'application/octet-stream' } });
+      alvo.innerHTML = mostrarResumoBtp({ ...c, nomeArquivo: arquivo.name }) + (c.avisos.length ? `<ul class="muted">${c.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : '');
+      ev.target.reset();
+    } catch (e) { erro(alvo, e); }
+  });
+
+  $('#btn-comparar').addEventListener('click', async () => {
+    const alvo = $('#comparacao');
+    alvo.innerHTML = '<p class="muted">Comparando com o DSS…</p>';
+    try {
+      const c = await api('/api/btp/comparacao');
+      const r = c.resumo;
+      const linhas = c.divergencias.map((d) => `<tr>
+          <td>${esc(d.navio)}<div class="muted">v. DSS ${esc(d.viagemDss)} · BTP ${esc(d.viagemBtp)}</div>${pillStatus(d.statusBtp)}</td>
+          <td>${d.diferencas.map((x) => `${esc(x.campo)}: BTP ${data(x.btp)} × DSS ${data(x.dss)}${x.diferencaHoras !== null ? ` (${x.diferencaHoras > 0 ? '+' : ''}${x.diferencaHoras} h)` : ''}`).join('<br>')}${d.aviso ? `<div class="muted">${esc(d.aviso)}</div>` : ''}</td>
+        </tr>`).join('');
+      alvo.innerHTML = `
+        <div class="resumo">
+          <div><strong>${r.conferidos}</strong>navios nas duas fontes</div>
+          <div><strong>${r.comDivergencia}</strong>com divergência (> ${c.toleranciaHoras} h)</div>
+          <div><strong>${r.somenteNaPlanilha}</strong>só na planilha</div>
+          <div><strong>${r.somenteNoDss}</strong>só no DSS</div>
+        </div>
+        ${linhas ? `<div class="tabela"><table><thead><tr><th>Navio</th><th>Diferenças</th></tr></thead><tbody>${linhas}</tbody></table></div>` : '<p class="muted">Nenhuma divergência.</p>'}
+        ${c.somenteNaPlanilha.length ? `<p class="muted">Só na planilha da BTP: ${c.somenteNaPlanilha.map((x) => `${esc(x.navio)} v. ${esc(x.viagem)}`).join(', ')}.</p>` : ''}
+        ${c.somenteNoDss.length ? `<p class="muted">Só no DSS: ${c.somenteNoDss.map((x) => `${esc(x.navio)} v. ${esc(x.viagem)}`).join(', ')}.</p>` : ''}`;
+    } catch (e) { erro(alvo, e); }
+  });
+
   async function carregarStatus() {
     try {
       const s = await api('/api/health');
       const pill = (ok, texto) => `<span class="pill ${ok ? 'ok' : 'alerta'}">${esc(texto)}</span>`;
       $('#status').innerHTML = `DSS: ${pill(s.dss === 'configurado', s.dss)} &nbsp; Banco: ${pill(s.banco === 'postgres', s.banco === 'postgres' ? 'postgres' : 'memória (some ao reiniciar)')}`;
       if (s.terminalPadrao) $('#campo-terminal').value = s.terminalPadrao;
+      carregarBtp();
     } catch (e) { erro($('#status'), e); }
   }
 
@@ -130,8 +205,8 @@
       const terminais = [...new Set(corpo.navios.map((n) => n.terminal).filter(Boolean))];
       if (terminais.length) $('#lista-terminais').innerHTML = terminais.map((t) => `<option value="${esc(t)}">`).join('');
       const linhas = corpo.navios.map((n, i) => `<tr>
-          <td>${esc(n.navio)}<div class="muted">v. ${esc(n.viagem)} · ${esc(n.armador)} · ${esc(n.terminal)}</div>${n.situacao === 'atracado' ? '<span class="pill ok">atracado</span>' : ''}</td>
-          <td>${data(n.datas.prevChegada)}</td>
+          <td>${esc(n.navio)}<div class="muted">v. ${esc(n.viagem)} · ${esc(n.armador)} · ${esc(n.terminal)}${n.btp?.berco ? ` · ${esc(n.btp.berco)}` : ''}</div>${n.btp ? pillStatus(n.btp.status) : n.situacao === 'atracado' ? '<span class="pill ok">atracado</span>' : ''}</td>
+          <td>${data(n.datas.prevChegada)}${n.btp?.chegada ? `<div class="muted">chegou ${data(n.btp.chegada)}</div>` : ''}</td>
           <td>${prevReal(n.datas.prevAtracacao, n.datas.atracacao)}</td>
           <td>${data(n.datas.prevSaida)}</td>
           <td>${data(n.datas.deadline)}</td>
@@ -145,8 +220,11 @@
           <div><strong>${r.totalNavios}</strong>navios na janela</div>
           <div><strong>${r.atracados}</strong>atracados</div>
           <div><strong>${r.previstos}</strong>previstos</div>
+          ${corpo.planilhaBtp ? `<div><strong>${r.naBarra}</strong>na barra (BTP)</div>` : ''}
           <div><strong>${r.totalConteineresPrevistos}</strong>contêineres monitorados previstos</div>
         </div>
+        ${corpo.avisos.length ? `<p><span class="pill alerta">Atenção</span></p><ul>${corpo.avisos.map((a) => `<li>${esc(a.mensagem)}</li>`).join('')}</ul>` : ''}
+        <p class="muted">Fonte: ${corpo.fonte === 'dss' ? 'DSS' : 'planilha da BTP'}${corpo.planilhaBtp ? ` · planilha da BTP de ${data(corpo.planilhaBtp.importadoEm)}` : ''}</p>
         <div class="tabela"><table><thead><tr><th>Navio</th><th>Chegada prev.</th><th>Atracação</th><th>Saída prev.</th><th>Deadline</th><th>Abertura gate</th><th>Liberação</th><th>Contêineres</th><th></th></tr></thead>
         <tbody>${linhas || '<tr><td colspan="9">Nenhuma atracação na janela.</td></tr>'}</tbody></table></div>
         ${corpo.semAtracacaoNaJanela.length ? `<p class="muted">${corpo.semAtracacaoNaJanela.length} contêiner(es) monitorado(s) sem atracação na janela: ${corpo.semAtracacaoNaJanela.map((c) => `${esc(c.numero)} (${esc(c.navioNome)}${c.navioViagem ? ` v. ${esc(c.navioViagem)}` : ''})`).join(', ')}. Confira o nome do navio e a viagem.</p>` : ''}
