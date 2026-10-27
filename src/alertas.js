@@ -187,6 +187,7 @@ function criarAlertas({ envio, memoria, persistente = false, filtro = {}, deadli
 
   /** Avalia uma consulta: novos eventos vão para a fila. */
   async function avaliar(navios, mudancas) {
+    if (!envio) return []; // desligados: não acumula fila
     await iniciar();
     const eventos = gerarEventos(navios, mudancas, { agora: agora(), filtro, deadlineHoras, mudancaMinHoras }).filter((e) => !enviados.has(e.id) && !pendentes.has(e.id));
     if (primeira && !persistente) {
