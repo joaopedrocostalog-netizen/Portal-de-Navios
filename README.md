@@ -48,7 +48,7 @@ Os códigos 400, 401, 403 e 500 chegam com a mensagem do DSS. Por exemplo, 403 s
 
 | Rota | Para quê |
 |---|---|
-| `GET /` | Painel: cartões por situação, próximas 48 h (deadlines, aberturas de gate, chegadas, atracações, liberações, atrasos) e tabela completa com filtros |
+| `GET /` | Painel em abas: Visão geral (próximo deadline, indicadores, faixa das próximas 48 h, gráfico de chegadas/deadlines/saídas por dia e por terminal, o que pede atenção e agenda), Navios (tabela ou linha do tempo, com Excel), Mudanças (gráfico por dia e lista) e Qualidade dos dados |
 | `GET /api/painel?dias=7` | Tudo o que a página usa, numa chamada só: lista + resumo |
 | `GET /api/navios` | Atracações normalizadas com datas, situações e horas calculadas |
 | `GET /api/resumo?horas=48` | Contagens por terminal, armador, situação e gate, mais as listas das próximas horas |

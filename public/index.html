@@ -4,531 +4,1213 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Portal de Navios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    /* ---------- tokens ---------- */
     :root {
-      --fundo: #f6f7f9; --cartao: #fff; --texto: #1c2430; --suave: #5b6675; --borda: #dfe3e8; --destaque: #0b6e99; --destaque-texto: #fff;
-      --erro: #b42318; --c-cinza: #eceff3; --t-cinza: #3d4654; --c-azul: #e3edfb; --t-azul: #1f4f8f; --c-amarelo: #fbf3c4; --t-amarelo: #6b5600;
-      --c-laranja: #ffe3c7; --t-laranja: #7a3d00; --c-verde: #dcf3e2; --t-verde: #1d6236; --c-vermelho: #fde2e0; --t-vermelho: #8f1f17;
+      color-scheme: light;
+      --pagina: #eef1f4; --superficie: #ffffff; --superficie-2: #f6f8fa; --linha: #dde3e9; --linha-forte: #c3ccd6;
+      --tinta: #15222f; --tinta-2: #4b5a6a; --tinta-3: #6f7d8c;
+      --ponte: #12304d; --ponte-2: #1b416a; --ponte-tinta: #eef3f8; --ponte-suave: #a5b9cf;
+      --acao: #1b5fa8; --acao-tinta: #ffffff; --acao-fundo: #e4eefa;
+      --sinal: #e09a00; --sinal-fundo: #fff4d6; --sinal-tinta: #6b4a00;
+      --t-btp: #2a78d6; --t-santos_brasil: #eb6834; --t-embraport: #1baf7a; --t-outro: #8a96a3;
+      --ok: #0ca30c; --ok-fundo: #e2f5e2; --ok-tinta: #0a5c0a;
+      --atencao: #fab219; --atencao-fundo: #fff3d4; --atencao-tinta: #6b4a00;
+      --critico: #d03b3b; --critico-fundo: #fde4e3; --critico-tinta: #8c1f1f;
+      --info-fundo: #e4eefa; --info-tinta: #1b4f8c; --neutro-fundo: #eceff3; --neutro-tinta: #44515f;
+      --forte-fundo: #12304d; --forte-tinta: #ffffff;
+      --grade: #e6eaee; --eixo: #c3ccd6;
+      --raio: 6px;
+      --fonte: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --fonte-c: "Barlow Condensed", "Barlow", system-ui, sans-serif;
     }
     @media (prefers-color-scheme: dark) {
-      :root {
-        --fundo: #12161c; --cartao: #1a2029; --texto: #e6e9ee; --suave: #9aa5b4; --borda: #2c3542; --destaque: #3fa3d1; --destaque-texto: #0b1218;
-        --erro: #ff8a7a; --c-cinza: #262d38; --t-cinza: #c3cad4; --c-azul: #1f2f4a; --t-azul: #b9d1f5; --c-amarelo: #3f3708; --t-amarelo: #f3e39a;
-        --c-laranja: #4a2c0c; --t-laranja: #ffcf9f; --c-verde: #163323; --t-verde: #a6e3bb; --c-vermelho: #43191a; --t-vermelho: #ffb9b2;
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --pagina: #0d141c; --superficie: #151f2a; --superficie-2: #1a2633; --linha: #263443; --linha-forte: #34465a;
+        --tinta: #e7edf3; --tinta-2: #a9b7c6; --tinta-3: #8696a7;
+        --ponte: #0a1724; --ponte-2: #14304d; --ponte-tinta: #e7edf3; --ponte-suave: #8ea4bc;
+        --acao: #5da2ee; --acao-tinta: #0b1622; --acao-fundo: #1b3350;
+        --sinal: #f0b030; --sinal-fundo: #3a2c08; --sinal-tinta: #ffd77a;
+        --t-btp: #3987e5; --t-santos_brasil: #d95926; --t-embraport: #199e70; --t-outro: #7d8b9a;
+        --ok-fundo: #133420; --ok-tinta: #8fe0a0; --atencao-fundo: #3a2c08; --atencao-tinta: #ffd77a;
+        --critico-fundo: #401a1b; --critico-tinta: #ffb4ae; --info-fundo: #1b3350; --info-tinta: #b7d3f6;
+        --neutro-fundo: #243140; --neutro-tinta: #c3cdd8; --forte-fundo: #d9e6f4; --forte-tinta: #0d1a28;
+        --grade: #223040; --eixo: #34465a;
       }
     }
+    :root[data-theme="dark"] { color-scheme: dark; }
+
+    /* ---------- base ---------- */
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-    main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
-    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 14px; }
-    h1 { font-size: 21px; margin: 0; }
-    h2 { font-size: 15px; margin: 0 0 8px; }
-    .suave { color: var(--suave); font-size: 13px; }
-    .erro { color: var(--erro); }
-    section { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
-    .cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-    .cartoes button { text-align: left; background: var(--cartao); color: var(--texto); border: 1px solid var(--borda); border-radius: 8px; padding: 9px 11px; cursor: pointer; font: inherit; }
-    .cartoes button:hover { border-color: var(--destaque); }
-    .cartoes strong { display: block; font-size: 22px; }
-    .colunas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-    .colunas ul { margin: 0; padding-left: 18px; }
-    .colunas li { margin-bottom: 3px; }
-    form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
-    label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--suave); }
-    label.marcar { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 7px; font-size: 13px; color: var(--texto); }
-    input, select { font: inherit; padding: 6px 8px; border: 1px solid var(--borda); border-radius: 6px; background: var(--fundo); color: var(--texto); }
-    button.acao { font: inherit; padding: 7px 13px; border: 0; border-radius: 6px; background: var(--destaque); color: var(--destaque-texto); cursor: pointer; }
-    button.leve { font: inherit; padding: 6px 11px; border: 1px solid var(--borda); border-radius: 6px; background: transparent; color: var(--destaque); cursor: pointer; }
-    .tabela { overflow-x: auto; margin-top: 10px; }
-    table { border-collapse: collapse; width: 100%; font-size: 13px; }
-    th, td { text-align: left; padding: 6px 7px; border-bottom: 1px solid var(--borda); vertical-align: top; white-space: nowrap; }
-    th { color: var(--suave); font-weight: 500; position: sticky; top: 0; background: var(--cartao); }
-    .pill { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
-    .cinza { background: var(--c-cinza); color: var(--t-cinza); } .azul { background: var(--c-azul); color: var(--t-azul); }
-    .amarelo { background: var(--c-amarelo); color: var(--t-amarelo); } .laranja { background: var(--c-laranja); color: var(--t-laranja); }
-    .verde { background: var(--c-verde); color: var(--t-verde); } .vermelho { background: var(--c-vermelho); color: var(--t-vermelho); }
-    a { color: var(--destaque); }
-    button.nome { font: inherit; font-weight: 600; padding: 0; border: 0; background: none; color: var(--texto); cursor: pointer; text-align: left; }
-    button.nome:hover { color: var(--destaque); text-decoration: underline; }
-    .mudancas { list-style: none; margin: 0; padding: 0; }
-    .mudancas li { padding: 5px 0; border-bottom: 1px solid var(--borda); }
-    .mudancas li:last-child { border-bottom: 0; }
-    .seta { color: var(--suave); padding: 0 4px; }
-    .antigo { text-decoration: line-through; color: var(--suave); }
-    dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); border: 1px solid var(--borda); border-radius: 10px; padding: 0; background: var(--cartao); color: var(--texto); }
-    dialog::backdrop { background: rgb(0 0 0 / 0.45); }
-    .detalhe-topo { display: flex; justify-content: space-between; align-items: start; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--borda); position: sticky; top: 0; background: var(--cartao); }
-    .detalhe-corpo { padding: 14px 16px; }
-    .sequencia { list-style: none; margin: 0 0 18px; padding: 0; position: relative; }
-    .sequencia li { display: grid; grid-template-columns: 18px 120px 1fr; gap: 8px; align-items: baseline; padding: 4px 0; }
-    .ponto { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--destaque); background: var(--cartao); margin-top: 4px; }
-    .passou .ponto { background: var(--destaque); }
-    .sem-data { color: var(--suave); }
-    .agora { grid-template-columns: 18px 1fr !important; color: var(--destaque); font-size: 12px; font-weight: 600; }
-    .agora .ponto { border-radius: 0; height: 2px; width: 14px; border: 0; background: var(--destaque); margin-top: 8px; }
-    a.botao { display: inline-block; text-decoration: none; }
-    .abas { display: flex; gap: 4px; margin-top: 12px; border-bottom: 1px solid var(--borda); }
-    .abas button { font: inherit; padding: 6px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--suave); cursor: pointer; margin-bottom: -1px; }
-    .abas button[aria-selected="true"] { color: var(--texto); border-bottom-color: var(--destaque); font-weight: 600; }
-    /* linha do tempo */
-    .gantt { margin-top: 10px; overflow-x: auto; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--pagina); color: var(--tinta); font: 15px/1.5 var(--fonte); }
+    h1, h2, h3 { margin: 0; font-weight: 600; }
+    h2 { font-size: 17px; line-height: 1.3; }
+    h3 { font-size: 15px; }
+    p { margin: 0; }
+    a { color: var(--acao); }
+    button, input, select { font: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--acao); outline-offset: 2px; border-radius: 3px; }
+    .suave { color: var(--tinta-2); }
+    .fraco { color: var(--tinta-3); }
+    .num { font-variant-numeric: tabular-nums; }
+    [hidden] { display: none !important; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+    /* ---------- ponte (cabeçalho) ---------- */
+    .ponte { background: var(--ponte); color: var(--ponte-tinta); }
+    .ponte-linha { max-width: 1320px; margin: 0 auto; padding: 14px 16px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
+    .marca { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+    .marca svg { flex: none; }
+    .marca h1 { font: 600 24px/1 var(--fonte-c); letter-spacing: 0.01em; }
+    .estado { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; color: var(--ponte-suave); }
+    .estado strong { color: var(--ponte-tinta); font-weight: 500; }
+    .luz { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--ponte-suave); }
+    .luz.ok { background: #3fcf6e; } .luz.falha { background: #ff8a7a; }
+    .botao-ponte { border: 1px solid var(--ponte-suave); background: transparent; color: var(--ponte-tinta); border-radius: var(--raio); padding: 6px 12px; cursor: pointer; }
+    .botao-ponte:hover { background: var(--ponte-2); }
+    .botao-ponte[aria-busy="true"] { opacity: 0.6; cursor: progress; }
+    .abas-principais { max-width: 1320px; margin: 0 auto; padding: 8px 16px 0; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+    .abas-principais a { color: var(--ponte-suave); text-decoration: none; padding: 9px 14px 11px; font-weight: 500; white-space: nowrap; border-radius: var(--raio) var(--raio) 0 0; }
+    .abas-principais a:hover { color: var(--ponte-tinta); }
+    .abas-principais a[aria-current="page"] { background: var(--pagina); color: var(--tinta); }
+    .abas-principais .contador { font-size: 12px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--ponte-2); color: var(--ponte-tinta); }
+    .abas-principais a[aria-current="page"] .contador { background: var(--sinal-fundo); color: var(--sinal-tinta); }
+
+    /* ---------- filtros globais ---------- */
+    .filtros { max-width: 1320px; margin: 0 auto; padding: 14px 16px 4px; display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; }
+    .campo { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--tinta-2); }
+    .campo select, .campo input[type="search"] { min-height: 36px; padding: 6px 10px; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--superficie); }
+    .campo input[type="search"] { width: 190px; }
+    .segmentos { display: inline-flex; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--superficie); padding: 2px; gap: 2px; margin: 0; }
+    .segmentos label { position: relative; }
+    .segmentos input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+    .segmentos span { display: flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 4px; white-space: nowrap; font-size: 14px; }
+    .segmentos input:checked + span { background: var(--ponte); color: var(--ponte-tinta); }
+    .segmentos input:focus-visible + span { outline: 2px solid var(--acao); outline-offset: 1px; }
+    .segmentos button { border: 0; background: none; padding: 5px 11px; border-radius: 4px; cursor: pointer; font-size: 14px; color: var(--tinta-2); }
+    .segmentos button[aria-pressed="true"] { background: var(--ponte); color: var(--ponte-tinta); }
+    .filtros .limpar { border: 0; background: none; color: var(--acao); cursor: pointer; padding: 8px 4px; }
+
+    .aviso { max-width: 1320px; margin: 8px auto 0; padding: 0 16px; }
+    .aviso div { background: var(--sinal-fundo); color: var(--sinal-tinta); border-left: 4px solid var(--sinal); padding: 10px 14px; border-radius: var(--raio); }
+    .aviso.erro div { background: var(--critico-fundo); color: var(--critico-tinta); border-left-color: var(--critico); }
+
+    /* ---------- estrutura ---------- */
+    main { max-width: 1320px; margin: 0 auto; padding: 14px 16px 48px; }
+    .painel { background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); padding: 16px 18px; min-width: 0; }
+    .painel + .painel, .grade-topo + .painel, .painel + .grade-dupla, .grade-dupla + .painel { margin-top: 14px; }
+    .painel-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+    .painel-topo p { font-size: 14px; }
+    .grade-topo { display: grid; grid-template-columns: minmax(300px, 5fr) 7fr; gap: 14px; }
+    .grade-dupla { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; }
+    .grade-topo > *, .grade-dupla > * { margin-top: 0 !important; }
+    @media (max-width: 920px) { .grade-topo, .grade-dupla { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+      #f-terminal { flex-wrap: wrap; }
+      .campo input[type="search"] { width: 150px; }
+      .contagem { font-size: 52px; }
+      .depois li { grid-template-columns: 86px 1fr; }
+      .depois li .terminal { grid-column: 2; }
+    }
+
+    /* ---------- próximo deadline (destaque) ---------- */
+    .destaque { border-left: 6px solid var(--ponte); display: flex; flex-direction: column; gap: 6px; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .destaque { border-left-color: var(--acao); } }
+    .destaque.urgente { border-left-color: var(--sinal); }
+    .destaque .rotulo { font-size: 14px; color: var(--tinta-2); }
+    .contagem { font: 600 64px/0.95 var(--fonte-c); letter-spacing: -0.01em; }
+    .destaque.urgente .contagem { color: var(--sinal-tinta); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .destaque.urgente .contagem { color: var(--sinal); } }
+    .contagem small { font-size: 0.45em; font-weight: 500; color: var(--tinta-2); margin-left: 2px; }
+    .navio-grande { font: 600 26px/1.15 var(--fonte-c); }
+    .navio-grande button { font: inherit; }
+    .linha-meta { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 14px; color: var(--tinta-2); }
+    .depois { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--linha); font-size: 14px; }
+    .depois ol { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+    .depois li { display: grid; grid-template-columns: 92px 1fr auto; gap: 8px; align-items: baseline; }
+
+    /* ---------- indicadores ---------- */
+    .indicadores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--linha); border: 1px solid var(--linha); border-radius: var(--raio); overflow: hidden; }
+    @media (max-width: 560px) { .indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .indicador { text-align: left; border: 0; background: var(--superficie); padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-height: 104px; }
+    .indicador:hover { background: var(--superficie-2); }
+    .indicador .valor { font: 600 40px/1 var(--fonte-c); }
+    .indicador .nome { font-size: 14px; color: var(--tinta); font-weight: 500; }
+    .indicador .detalhe { font-size: 13px; color: var(--tinta-2); }
+    .indicador.alerta .valor { color: var(--critico-tinta); }
+    .indicador.atencao .valor { color: var(--sinal-tinta); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .indicador.atencao .valor { color: var(--sinal); } }
+
+    /* ---------- marcas por terminal ---------- */
+    .ponto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+    .t-btp { background: var(--t-btp); } .t-santos_brasil { background: var(--t-santos_brasil); } .t-embraport { background: var(--t-embraport); } .t-outro { background: var(--t-outro); }
+    .terminal { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .legenda { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--tinta-2); }
+    .legenda span { display: inline-flex; align-items: center; gap: 6px; }
+
+    /* ---------- faixa das 48 horas ---------- */
+    .faixa-rolagem { overflow-x: auto; }
+    .faixa { min-width: 720px; }
+    .pista { display: grid; grid-template-columns: 150px 1fr; align-items: stretch; border-top: 1px solid var(--grade); }
+    .pista-nome { padding: 8px 10px 8px 0; font-size: 14px; display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+    .pista-nome .qtd { font: 600 17px/1 var(--fonte-c); color: var(--tinta-2); }
+    .pista-trilho { position: relative; }
+    .eixo-faixa { display: grid; grid-template-columns: 150px 1fr; }
+    .eixo-faixa .pista-trilho { height: 26px; }
+    .marca-hora { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--grade); }
+    .marca-hora.dia { border-left-color: var(--eixo); }
+    .rotulo-hora { position: absolute; bottom: 4px; font-size: 12px; color: var(--tinta-3); transform: translateX(4px); white-space: nowrap; }
+    .rotulo-hora.dia { color: var(--tinta); font-weight: 600; }
+    .linha-agora { position: absolute; top: 0; bottom: 0; left: 0; border-left: 2px solid var(--sinal); }
+    .rotulo-agora { position: absolute; left: 0; bottom: 4px; font-size: 12px; font-weight: 600; color: var(--sinal-tinta); background: var(--sinal-fundo); padding: 0 5px; border-radius: 3px; }
+    .evento { position: absolute; width: 22px; height: 22px; margin-left: -11px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; z-index: 1; }
+    .evento::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--cor); box-shadow: 0 0 0 2px var(--superficie); }
+    .evento:hover::before, .evento:focus-visible::before { width: 16px; height: 16px; }
+    .evento.t-btp { --cor: var(--t-btp); background: none; } .evento.t-santos_brasil { --cor: var(--t-santos_brasil); background: none; }
+    .evento.t-embraport { --cor: var(--t-embraport); background: none; } .evento.t-outro { --cor: var(--t-outro); background: none; }
+    .vazio { padding: 18px 0; color: var(--tinta-2); }
+
+    /* ---------- gráfico de colunas ---------- */
+    .grafico { display: grid; grid-template-columns: 34px 1fr; gap: 0 6px; }
+    .grafico-y { position: relative; height: 190px; }
+    .grafico-y span { position: absolute; right: 0; transform: translateY(50%); font-size: 12px; color: var(--tinta-3); font-variant-numeric: tabular-nums; }
+    .grafico-area { position: relative; height: 190px; border-bottom: 1px solid var(--eixo); display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+    .grafico-grade { position: absolute; left: 0; right: 0; border-top: 1px solid var(--grade); }
+    .coluna { position: relative; border: 0; background: none; padding: 0; cursor: default; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; z-index: 1; }
+    .coluna:hover { background: linear-gradient(to top, var(--superficie-2), transparent); }
+    .coluna .total { font: 600 15px/1 var(--fonte-c); color: var(--tinta); margin-bottom: 4px; }
+    .coluna .total.zero { color: var(--tinta-3); font-weight: 500; }
+    .pilha { width: min(24px, 60%); display: flex; flex-direction: column-reverse; gap: 2px; }
+    .pilha span { display: block; min-height: 2px; }
+    .pilha span:last-child { border-radius: 4px 4px 0 0; }
+    .pilha .serie-unica { background: var(--acao); }
+    .grafico-x { grid-column: 2; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); margin-top: 6px; }
+    .grafico-x span { text-align: center; font-size: 12px; color: var(--tinta-2); line-height: 1.25; }
+    .grafico-x span.hoje { color: var(--tinta); font-weight: 600; }
+
+    /* ---------- listas ---------- */
+    .lista { list-style: none; margin: 0; padding: 0; }
+    .lista li { padding: 7px 0; border-top: 1px solid var(--linha); display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+    .lista li:first-child { border-top: 0; }
+    .lista .direita { margin-left: auto; color: var(--tinta-2); font-size: 14px; }
+    .atencao-bloco + .atencao-bloco { margin-top: 16px; }
+    .atencao-bloco h3 { margin-bottom: 4px; display: flex; justify-content: space-between; align-items: baseline; }
+    .atencao-bloco h3 a { font-size: 14px; font-weight: 500; }
+    button.nome { border: 0; background: none; padding: 0; font-weight: 600; color: var(--tinta); cursor: pointer; text-align: left; }
+    button.nome:hover { color: var(--acao); text-decoration: underline; }
+
+    /* agenda */
+    .agenda-dia { font: 600 18px/1.2 var(--fonte-c); margin: 16px 0 4px; }
+    .agenda-dia:first-child { margin-top: 0; }
+    .agenda li { display: grid; grid-template-columns: 54px 190px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; }
+    .agenda .hora { font: 600 17px/1 var(--fonte-c); font-variant-numeric: tabular-nums; }
+    .agenda .tipo { font-size: 14px; color: var(--tinta-2); }
+    @media (max-width: 640px) { .agenda li { grid-template-columns: 50px minmax(0, 1fr); } .agenda .tipo { grid-column: 2; order: -1; } .agenda .direita { grid-column: 2; margin-left: 0; } }
+    .mais { margin-top: 10px; border: 1px solid var(--linha-forte); background: var(--superficie); color: var(--acao); border-radius: var(--raio); padding: 6px 12px; cursor: pointer; }
+
+    /* ---------- selos ---------- */
+    .selo { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 13px; line-height: 1.5; white-space: nowrap; font-weight: 500; }
+    .s-info { background: var(--info-fundo); color: var(--info-tinta); } .s-atencao { background: var(--atencao-fundo); color: var(--atencao-tinta); }
+    .s-ok { background: var(--ok-fundo); color: var(--ok-tinta); } .s-critico { background: var(--critico-fundo); color: var(--critico-tinta); }
+    .s-neutro { background: var(--neutro-fundo); color: var(--neutro-tinta); } .s-forte { background: var(--forte-fundo); color: var(--forte-tinta); }
+
+    /* ---------- aba navios ---------- */
+    .barra { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; margin-bottom: 12px; }
+    .barra .direita { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .marcar { display: flex; align-items: center; gap: 6px; font-size: 14px; min-height: 36px; }
+    .botao { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 14px; border-radius: var(--raio); border: 1px solid var(--acao); background: var(--acao); color: var(--acao-tinta); text-decoration: none; cursor: pointer; font-weight: 500; }
+    .botao.leve { background: var(--superficie); color: var(--acao); border-color: var(--linha-forte); }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; background: var(--sinal-fundo); color: var(--sinal-tinta); font-size: 14px; }
+    .chip button { border: 0; background: none; cursor: pointer; color: inherit; font-size: 16px; line-height: 1; padding: 0 4px; }
+    .contagem-lista { font-size: 14px; color: var(--tinta-2); }
+    .tabela-rolagem { overflow: auto; max-height: calc(100vh - 160px); border: 1px solid var(--linha); border-radius: var(--raio); }
+    table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 14px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--linha); vertical-align: top; white-space: nowrap; background: var(--superficie); }
+    thead th { position: sticky; top: 0; z-index: 2; background: var(--superficie-2); color: var(--tinta-2); font-weight: 500; font-size: 13px; }
+    tbody tr:hover td { background: var(--superficie-2); }
+    th:first-child, td:first-child { position: sticky; left: 0; z-index: 1; border-right: 1px solid var(--linha); }
+    thead th:first-child { z-index: 3; }
+    td .sub { font-size: 13px; color: var(--tinta-2); }
+    td .previsto { color: var(--tinta-2); }
+
+    /* linha do tempo (gantt) */
+    .gantt { overflow-x: auto; }
     .gantt-grade { min-width: 760px; }
-    .gantt-linha { display: grid; grid-template-columns: 210px 1fr; align-items: center; min-height: 30px; border-bottom: 1px solid var(--borda); }
-    .gantt-rotulo { padding: 3px 8px 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-    .gantt-trilho { position: relative; height: 30px; }
-    .gantt-terminal { padding: 10px 0 4px; font-weight: 600; border-bottom: 1px solid var(--borda); }
-    .gantt-eixo .gantt-trilho { height: 22px; }
-    .gantt-dia { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--borda); font-size: 11px; color: var(--suave); padding-left: 3px; white-space: nowrap; }
-    .gantt-fundo { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--borda); }
-    .gantt-agora { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--destaque); z-index: 2; }
-    .gantt-barra { position: absolute; top: 5px; height: 14px; border-radius: 4px; border: 0; padding: 0; cursor: pointer; z-index: 1; }
-    .gantt-barra.previsto, .gantt-barra.aguardando_atracacao, .gantt-barra.chegada_passou { background: var(--c-azul); outline: 1px solid var(--t-azul); }
-    .gantt-barra.atracado { background: var(--c-laranja); outline: 1px solid var(--t-laranja); }
-    .gantt-barra.encerrado { background: var(--c-cinza); outline: 1px solid var(--t-cinza); }
-    .gantt-barra.estimado { background-image: repeating-linear-gradient(135deg, transparent 0 4px, rgb(127 127 127 / 0.25) 4px 6px); }
-    .gantt-gate { position: absolute; top: 22px; height: 4px; border-radius: 2px; background: var(--t-verde); opacity: 0.8; }
-    .gantt-deadline { position: absolute; top: 19px; width: 2px; height: 10px; background: var(--erro); }
-    .legenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--suave); margin-top: 8px; }
-    .legenda span::before { content: ""; display: inline-block; width: 18px; height: 8px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
-    .legenda .l-prev::before { background: var(--c-azul); outline: 1px solid var(--t-azul); }
-    .legenda .l-atr::before { background: var(--c-laranja); outline: 1px solid var(--t-laranja); }
-    .legenda .l-est::before { background: var(--c-azul) repeating-linear-gradient(135deg, transparent 0 4px, rgb(127 127 127 / 0.35) 4px 6px); }
-    .legenda .l-gate::before { height: 4px; background: var(--t-verde); }
-    .legenda .l-dl::before { width: 2px; height: 10px; background: var(--erro); }
-    .legenda .l-agora::before { width: 2px; height: 12px; background: var(--destaque); }
-    /* qualidade */
-    .qualidade td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    .qualidade td.grupo { color: var(--suave); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; padding-top: 12px; }
-    .achados { margin: 6px 0 0; padding-left: 18px; }
-    .achados li { margin-bottom: 3px; }
-    textarea { width: 100%; min-height: 140px; font: 13px/1.5 ui-monospace, monospace; padding: 8px; border: 1px solid var(--borda); border-radius: 6px; background: var(--fundo); color: var(--texto); }
+    .gantt-linha { display: grid; grid-template-columns: 200px 1fr; align-items: center; min-height: 32px; border-bottom: 1px solid var(--grade); }
+    .gantt-rotulo { padding: 3px 8px 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+    .gantt-trilho { position: relative; height: 32px; }
+    .gantt-terminal { display: flex; align-items: center; gap: 8px; padding: 14px 0 6px; font: 600 18px/1.2 var(--fonte-c); border-bottom: 1px solid var(--linha); }
+    .gantt-eixo .gantt-trilho { height: 24px; }
+    .gantt-dia { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--grade); font-size: 12px; color: var(--tinta-3); padding: 4px 0 0 4px; white-space: nowrap; }
+    .gantt-agora { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--sinal); z-index: 2; }
+    .gantt-barra { position: absolute; top: 6px; height: 14px; border-radius: 4px; border: 0; padding: 0; cursor: pointer; z-index: 1; background: var(--cor); }
+    .gantt-barra.previsto { background: color-mix(in srgb, var(--cor) 28%, var(--superficie)); box-shadow: inset 0 0 0 1.5px var(--cor); }
+    .gantt-barra.encerrado { background: var(--neutro-fundo); box-shadow: inset 0 0 0 1px var(--linha-forte); }
+    .gantt-barra.estimado { background-image: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--cor) 45%, transparent) 4px 6px); }
+    .gantt-gate { position: absolute; top: 24px; height: 3px; border-radius: 2px; background: var(--tinta-3); }
+    .gantt-deadline { position: absolute; top: 20px; width: 2px; height: 11px; background: var(--critico); }
+    .gantt-legenda { margin-top: 10px; }
+    .gantt-legenda i { display: inline-block; width: 22px; height: 10px; border-radius: 3px; }
+
+    /* ---------- mudanças ---------- */
+    .mudanca { display: grid !important; grid-template-columns: 54px minmax(0, 1fr); gap: 2px 10px; }
+    .mudanca .hora { font: 600 17px/1.2 var(--fonte-c); font-variant-numeric: tabular-nums; }
+    .de { text-decoration: line-through; color: var(--tinta-3); }
+    .seta { color: var(--tinta-3); padding: 0 6px; }
+
+    /* ---------- qualidade ---------- */
+    .q-tabela td, .q-tabela th { white-space: normal; }
+    .q-tabela td.grupo { background: var(--superficie-2); color: var(--tinta-2); font-size: 13px; font-weight: 600; }
+    .q-tabela th:not(:first-child), .q-tabela td:not(:first-child) { min-width: 190px; }
+    .medidor { display: grid; grid-template-columns: 90px auto; gap: 8px; align-items: center; }
+    .medidor-trilho { height: 8px; border-radius: 4px; background: var(--neutro-fundo); overflow: hidden; }
+    .medidor-trilho span { display: block; height: 100%; border-radius: 4px; }
+    .m-ok { background: var(--ok); } .m-atencao { background: var(--atencao); } .m-critico { background: var(--critico); }
+    .achados { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+    .achados li { display: grid; grid-template-columns: 70px 1fr; gap: 8px; align-items: baseline; font-size: 14px; }
+    .colunas-q { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 24px; margin-top: 16px; }
+    textarea { width: 100%; min-height: 150px; font: 14px/1.5 var(--fonte); padding: 10px; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--superficie-2); color: var(--tinta); margin-top: 8px; }
+    details summary { cursor: pointer; color: var(--acao); font-weight: 500; }
+
+    /* ---------- rodapé ---------- */
+    .rodape { margin-top: 24px; font-size: 13px; color: var(--tinta-2); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+    /* ---------- detalhe ---------- */
+    dialog { width: min(780px, calc(100vw - 24px)); max-height: calc(100vh - 40px); border: 1px solid var(--linha); border-radius: 10px; padding: 0; background: var(--superficie); color: var(--tinta); }
+    dialog::backdrop { background: rgb(8 18 30 / 0.55); }
+    .detalhe-topo { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--linha); position: sticky; top: 0; background: var(--superficie); z-index: 2; }
+    .detalhe-topo h2 { font: 600 28px/1.1 var(--fonte-c); }
+    .detalhe-corpo { padding: 16px 20px 22px; }
+    .detalhe-corpo h3 { margin: 4px 0 8px; }
+    .sequencia { list-style: none; margin: 0 0 20px; padding: 0; }
+    .sequencia li { display: grid; grid-template-columns: 18px 104px 1fr; gap: 10px; align-items: baseline; padding: 5px 0; }
+    .sequencia .p { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ponte); background: var(--superficie); margin-top: 5px; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sequencia .p { border-color: var(--acao); } }
+    .sequencia .passou .p { background: var(--ponte); }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sequencia .passou .p { background: var(--acao); } }
+    .sequencia .agora { color: var(--sinal-tinta); font-weight: 600; font-size: 13px; }
+    .sequencia .agora .p { border: 0; border-radius: 0; height: 2px; width: 16px; background: var(--sinal); margin-top: 9px; }
+    .sequencia .quando { font-variant-numeric: tabular-nums; }
+
+    /* ---------- dica (tooltip) ---------- */
+    #dica { position: fixed; z-index: 50; max-width: 320px; pointer-events: none; background: var(--tinta); color: var(--superficie); padding: 8px 10px; border-radius: var(--raio); font-size: 13px; line-height: 1.45; white-space: pre-line; box-shadow: 0 6px 18px rgb(0 0 0 / 0.18); }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .evento::before { transition: width 0.12s, height 0.12s; }
+    }
   </style>
 </head>
 <body>
-<main>
-  <header>
-    <div>
+<header class="ponte">
+  <div class="ponte-linha">
+    <div class="marca">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 20h24l-3.5 6.5a2 2 0 0 1-1.8 1H9.3a2 2 0 0 1-1.8-1Z" fill="currentColor"/><rect x="8" y="12" width="5" height="6" rx="1" fill="#2a78d6"/><rect x="14" y="12" width="5" height="6" rx="1" fill="#eb6834"/><rect x="20" y="12" width="5" height="6" rx="1" fill="#1baf7a"/><rect x="11" y="6" width="5" height="5" rx="1" fill="currentColor" opacity=".55"/></svg>
       <h1>Portal de Navios</h1>
-      <div class="suave">API Portal de Navios do DSS · horários de Brasília</div>
     </div>
-    <div class="suave" id="status">Carregando…</div>
-  </header>
+    <div class="estado" id="estado" aria-live="polite">Carregando os dados do DSS…</div>
+    <button class="botao-ponte" type="button" id="atualizar">Atualizar agora</button>
+  </div>
+  <nav class="abas-principais" aria-label="Seções">
+    <a href="#visao">Visão geral</a>
+    <a href="#navios">Navios <span class="contador num" id="c-navios"></span></a>
+    <a href="#mudancas">Mudanças <span class="contador num" id="c-mudancas"></span></a>
+    <a href="#qualidade">Qualidade dos dados</a>
+  </nav>
+</header>
 
-  <section>
-    <div class="cartoes" id="cartoes"></div>
-  </section>
+<form class="filtros" id="filtros" aria-label="Filtros">
+  <fieldset class="segmentos" id="f-terminal" aria-label="Terminal">
+    <label><input type="radio" name="terminal" value="" checked><span>Todos os terminais</span></label>
+    <label><input type="radio" name="terminal" value="btp"><span><i class="ponto t-btp"></i>BTP</span></label>
+    <label><input type="radio" name="terminal" value="santos_brasil"><span><i class="ponto t-santos_brasil"></i>Santos Brasil</span></label>
+    <label><input type="radio" name="terminal" value="embraport"><span><i class="ponto t-embraport"></i>Embraport</span></label>
+  </fieldset>
+  <label class="campo">Armador<select name="armador"><option value="">Todos</option></select></label>
+  <label class="campo">Navio<input type="search" name="navio" placeholder="Buscar pelo nome" autocomplete="off"></label>
+  <label class="campo">Período<select name="dias"><option value="3">Próximos 3 dias</option><option value="7" selected>Próximos 7 dias</option><option value="14">Próximos 14 dias</option><option value="30">Próximos 30 dias</option><option value="">Tudo o que o DSS enviou</option></select></label>
+  <button type="button" class="limpar" id="limpar">Limpar filtros</button>
+</form>
+<div class="aviso" id="aviso" role="status" hidden><div></div></div>
 
-  <section>
-    <h2>Próximas <span id="janela">48</span> horas</h2>
-    <div class="colunas" id="proximas"></div>
-  </section>
-
-  <section>
-    <h2>Mudanças nas últimas 24 horas</h2>
-    <div id="mudancas"></div>
-  </section>
-
-  <section>
-    <form id="filtros">
-      <label>Terminal<select name="terminal"><option value="">Todos</option></select></label>
-      <label>Armador<select name="armador"><option value="">Todos</option></select></label>
-      <label>Navio<select name="situacao"><option value="">Todas</option><option value="previsto">Previsto</option><option value="aguardando_atracacao">Aguardando atracação</option><option value="chegada_passou">Chegada passou (sem dado de atracação)</option><option value="atracado">Atracado</option><option value="encerrado">Encerrado</option></select></label>
-      <label>Gate<select name="gate"><option value="">Todos</option><option value="aguardando">Aguardando abertura</option><option value="aberto">Aberto</option><option value="encerrado">Encerrado</option><option value="sem_dado">Sem dado</option></select></label>
-      <label>Busca (navio)<input name="navio" size="14" placeholder="MSC"></label>
-      <label>Período<select name="dias"><option value="3">Próximos 3 dias</option><option value="7" selected>Próximos 7 dias</option><option value="14">Próximos 14 dias</option><option value="30">Próximos 30 dias</option><option value="">Tudo o que o DSS enviou</option></select></label>
-      <label class="marcar"><input type="checkbox" name="encerrados" value="true"> Mostrar encerrados</label>
-      <label>Ordenar<select name="ordenar"><option value="referencia">Atracação</option><option value="chegada">Chegada</option><option value="deadline">Deadline</option><option value="navio">Navio</option></select></label>
-      <button class="acao" type="submit">Filtrar</button>
-      <button class="leve" type="button" id="limpar">Limpar</button>
-      <button class="leve" type="button" id="atualizar">Consultar o DSS agora</button>
-      <a class="leve botao" id="excel" href="/api/navios.xlsx" download>Exportar Excel</a>
-    </form>
-    <div class="abas" role="tablist">
-      <button type="button" role="tab" data-vista="tabela" aria-selected="true">Tabela</button>
-      <button type="button" role="tab" data-vista="linha" aria-selected="false">Linha do tempo</button>
+<main>
+  <!-- ======================= visão geral ======================= -->
+  <section id="aba-visao" aria-label="Visão geral">
+    <div class="grade-topo">
+      <article class="painel destaque" id="proximo" aria-live="polite"></article>
+      <div class="indicadores" id="indicadores"></div>
     </div>
-    <div id="tabela"></div>
-    <div id="linha" hidden></div>
-    <p class="suave">Resposta original: <a href="/api/dss/bruto" target="_blank">/api/dss/bruto</a> · API: <a href="/api/navios" target="_blank">/api/navios</a> · <a href="/api/resumo" target="_blank">/api/resumo</a> · <a href="/api/mudancas?horas=168" target="_blank">/api/mudancas</a> · <a href="/api/alertas" target="_blank">/api/alertas</a></p>
-    <p class="suave" id="alertas"></p>
+
+    <article class="painel">
+      <div class="painel-topo">
+        <div>
+          <h2>Próximas 48 horas</h2>
+          <p class="suave">Cada ponto é um evento previsto. Passe o mouse para ver o navio, clique para abrir o detalhe.</p>
+        </div>
+        <div class="legenda" id="legenda-faixa"></div>
+      </div>
+      <div class="faixa-rolagem"><div class="faixa" id="faixa"></div></div>
+    </article>
+
+    <div class="grade-dupla">
+      <article class="painel">
+        <div class="painel-topo">
+          <div>
+            <h2 id="titulo-dia">Chegadas por dia</h2>
+            <p class="suave" id="sub-dia">Navios com chegada prevista em cada dia, por terminal.</p>
+          </div>
+          <div class="segmentos" role="group" aria-label="O que contar" id="metrica">
+            <button type="button" data-metrica="chegada" aria-pressed="true">Chegadas</button>
+            <button type="button" data-metrica="deadline" aria-pressed="false">Deadlines</button>
+            <button type="button" data-metrica="saida" aria-pressed="false">Saídas</button>
+          </div>
+        </div>
+        <div id="por-dia"></div>
+        <div class="legenda" id="legenda-dia" style="margin-top:10px"></div>
+      </article>
+      <article class="painel" id="atencao"></article>
+    </div>
+
+    <article class="painel">
+      <div class="painel-topo">
+        <h2>Agenda das próximas 48 horas</h2>
+        <p class="suave">Deadlines, aberturas de gate, chegadas, liberações e saídas em ordem de horário.</p>
+      </div>
+      <div id="agenda"></div>
+    </article>
   </section>
 
-  <section>
-    <h2>Qualidade dos dados por terminal</h2>
-    <p class="suave">Sobre tudo o que o DSS enviou, sem os filtros acima. "Reais" conta só os registros em que a data real já deveria existir: a prevista passou há mais de 24 h (sem prevista, vale o deadline para o gate e a saída prevista para as liberações).</p>
-    <div id="qualidade"><p class="suave">Carregando…</p></div>
+  <!-- ======================= navios ======================= -->
+  <section id="aba-navios" aria-label="Navios" hidden>
+    <article class="painel">
+      <div class="barra">
+        <label class="campo">Situação do navio<select id="f-situacao"><option value="">Todas</option><option value="previsto">Previsto</option><option value="aguardando_atracacao">Aguardando atracação</option><option value="chegada_passou">Chegada passou (sem dado de atracação)</option><option value="atracado">Atracado</option><option value="encerrado">Encerrado</option></select></label>
+        <label class="campo">Gate<select id="f-gate"><option value="">Todos</option><option value="aguardando">Aguardando abertura</option><option value="aberto">Aberto</option><option value="encerrado">Encerrado</option><option value="sem_dado">Sem dado</option></select></label>
+        <label class="campo">Ordenar por<select id="f-ordenar"><option value="referencia">Atracação</option><option value="chegada">Chegada</option><option value="deadline">Deadline</option><option value="navio">Nome do navio</option></select></label>
+        <label class="marcar"><input type="checkbox" id="f-encerrados"> Mostrar encerrados</label>
+        <span id="chip-especial"></span>
+        <div class="direita">
+          <span class="contagem-lista" id="contagem-lista"></span>
+          <div class="segmentos" role="group" aria-label="Forma de ver" id="vista">
+            <button type="button" data-vista="tabela" aria-pressed="true">Tabela</button>
+            <button type="button" data-vista="linha" aria-pressed="false">Linha do tempo</button>
+          </div>
+          <a class="botao leve" id="excel" href="/api/navios.xlsx" download>Exportar Excel</a>
+        </div>
+      </div>
+      <div id="tabela"></div>
+      <div id="linha" hidden></div>
+    </article>
   </section>
+
+  <!-- ======================= mudanças ======================= -->
+  <section id="aba-mudancas" aria-label="Mudanças" hidden>
+    <article class="painel">
+      <div class="painel-topo">
+        <div>
+          <h2>Datas que mudaram por dia</h2>
+          <p class="suave">Cada vez que o DSS altera uma data de um navio, ela é registrada aqui.</p>
+        </div>
+        <div class="barra" style="margin:0">
+          <label class="campo">Mostrar<select id="m-periodo"><option value="24">Últimas 24 horas</option><option value="168" selected>Últimos 7 dias</option></select></label>
+          <label class="campo">Tipo de data<select id="m-campo"><option value="">Todas as datas</option><option value="deadline">Deadline</option><option value="chegada">Chegada e atracação</option><option value="gate">Abertura de gate</option><option value="saida">Saída</option><option value="liberacao">Liberações</option><option value="registro">Entradas e saídas da lista</option></select></label>
+        </div>
+      </div>
+      <div id="graf-mudancas"></div>
+    </article>
+    <article class="painel"><div id="lista-mudancas"><p class="suave">Carregando…</p></div></article>
+  </section>
+
+  <!-- ======================= qualidade ======================= -->
+  <section id="aba-qualidade" aria-label="Qualidade dos dados" hidden>
+    <article class="painel">
+      <div class="painel-topo">
+        <div>
+          <h2>Qualidade dos dados por terminal</h2>
+          <p class="suave">Calculada sobre tudo o que o DSS enviou, sem os filtros acima. "Datas reais" contam só os registros em que a data já deveria existir: a prevista passou há mais de 24 horas (sem prevista, vale o deadline para o gate e a saída prevista para as liberações).</p>
+        </div>
+      </div>
+      <div id="qualidade"><p class="suave">Carregando…</p></div>
+    </article>
+  </section>
+
+  <footer class="rodape">
+    <span id="alertas"></span>
+    <span>Dados brutos: <a href="/api/dss/bruto" target="_blank" rel="noopener">resposta do DSS</a></span>
+    <span>API: <a href="/api/navios" target="_blank" rel="noopener">navios</a>, <a href="/api/mudancas?horas=168" target="_blank" rel="noopener">mudanças</a>, <a href="/api/qualidade" target="_blank" rel="noopener">qualidade</a>, <a href="/api/alertas" target="_blank" rel="noopener">alertas</a></span>
+  </footer>
 </main>
 
-<dialog id="detalhe">
+<dialog id="detalhe" aria-labelledby="detalhe-nome">
   <div class="detalhe-topo">
     <div id="detalhe-titulo"></div>
-    <button class="leve" type="button" id="fechar">Fechar</button>
+    <button class="botao leve" type="button" id="fechar">Fechar</button>
   </div>
   <div class="detalhe-corpo" id="detalhe-corpo"></div>
 </dialog>
+<div id="dica" role="tooltip" hidden></div>
 
 <script>
-  const $ = (s) => document.querySelector(s);
-  const esc = (v) => String(v ?? '—').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  const data = (iso) => (iso ? fmt.format(new Date(iso)).replace(',', '') : '—');
-  const ROTULO = {
-    previsto: ['Previsto', 'azul'], aguardando_atracacao: ['Aguardando atracação', 'amarelo'], chegada_passou: ['Chegada passou', 'cinza'], atracado: ['Atracado', 'laranja'], encerrado: ['Encerrado', 'cinza'],
-    aguardando: ['Aguardando', 'azul'], aberto: ['Aberto', 'verde'], sem_dado: ['Sem dado', 'cinza'], liberado: ['Liberado', 'verde'], atrasado: ['Atrasado', 'vermelho'],
-  };
-  const pill = (v, rotulo) => { const [t, c] = ROTULO[v] || [v, 'cinza']; return `<span class="pill ${c}">${esc(rotulo || t)}</span>`; };
-  const h = (n) => (!n ? '' : ` <span class="suave">(${n > 0 ? '+' : ''}${n} h)</span>`);
-  const prevReal = (prev, real, atraso) => (real ? `${data(real)}${h(atraso)}` : prev ? `<span class="suave">prev.</span> ${data(prev)}` : '—');
-  const PROBLEMAS = {
-    data_real_no_futuro: 'data "real" no futuro tratada como prevista',
-    reefer_e_abertura_de_gate: 'liberação reefer do DSS lida como abertura de gate reefer',
-    armador_igual_viagem: 'armador do DSS era a viagem',
-    armador_invalido: 'armador do DSS inválido',
-    data_suspeita: 'data a mais de 1 ano descartada',
-    saida_sem_atracacao: 'saída prevista passou sem atracação informada pelo terminal',
-  };
-  const ajustes = (n) => {
-    const itens = n.qualidade.filter((q) => PROBLEMAS[q.problema]);
-    return itens.length ? ` <span class="pill amarelo" title="${esc(itens.map((q) => `${q.campo}: ${PROBLEMAS[q.problema]}${q.valor ? ` (${q.valor})` : ''}`).join('\n'))}">dados ajustados</span>` : '';
-  };
-  const terminal = (t) => ({ btp: 'BTP', santos_brasil: 'Santos Brasil', embraport: 'Embraport (DPW)' }[t] || t || '—');
+'use strict';
+// ============================================================ utilidades
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? '—').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const HORA = 36e5, DIA = 864e5, TZ = 'America/Sao_Paulo';
+const fmt = (o) => new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, ...o });
+const fData = fmt({ day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const fHora = fmt({ hour: '2-digit', minute: '2-digit' });
+const fDiaLongo = fmt({ weekday: 'long', day: '2-digit', month: '2-digit' });
+const fSemana = fmt({ weekday: 'short' });
+const fDiaMes = fmt({ day: '2-digit', month: '2-digit' });
+const partesSP = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+const data = (iso) => (iso ? fData.format(new Date(iso)).replace(',', '') : '—');
+const hora = (iso) => fHora.format(new Date(iso));
+const ms = (iso) => (iso ? Date.parse(iso) : NaN);
+const meiaNoiteSP = (t) => { const [y, m, d] = partesSP.format(new Date(t)).split('-').map(Number); return Date.UTC(y, m - 1, d, 3); };
+const semana = (t) => fSemana.format(new Date(t)).replace('.', '');
+const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function nomeDia(t) {
+  const dif = Math.round((meiaNoiteSP(t) - meiaNoiteSP(Date.now())) / DIA);
+  const base = fDiaLongo.format(new Date(t));
+  return dif === 0 ? `Hoje, ${base}` : dif === 1 ? `Amanhã, ${base}` : dif === -1 ? `Ontem, ${base}` : maiuscula(base);
+}
+function duracao(d) {
+  const min = Math.max(0, Math.round(d / 60000));
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60), r = min % 60;
+  if (h < 48) return r ? `${h} h ${r} min` : `${h} h`;
+  return `${Math.floor(h / 24)} d ${h % 24} h`;
+}
+function guardar(chave, valor) { try { localStorage.setItem(chave, JSON.stringify(valor)); } catch {} }
+function lembrar(chave, padrao) { try { const v = localStorage.getItem(chave); return v === null ? padrao : JSON.parse(v); } catch { return padrao; } }
 
-  // ---- histórico de mudanças
-  // Mesma chave do servidor: terminal|NAVIO|VIAGEM, só letras e números.
-  const so = (v) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const chave = (i) => i.chave || `${String(i.terminal ?? '').trim().toLowerCase()}|${so(i.navio)}|${so(i.viagem)}`;
-  const botaoNavio = (i) => `<button type="button" class="nome" data-chave="${esc(chave(i))}" title="Ver datas e histórico">${esc(i.navio)}</button>`;
-  const dssIso = (v) => (v ? new Date(`${String(v).replace(' ', 'T')}Z`).toISOString() : null);
-  const fmtHora = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  function diferenca(ms) {
-    const sinal = ms > 0 ? '+' : '−';
-    const a = Math.abs(ms) / 36e5;
-    const texto = a < 1 ? `${Math.round(a * 60)} min` : a < 48 ? `${Math.round(a)} h` : `${(a / 24).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} dias`;
-    return `<span class="pill ${ms > 0 ? 'laranja' : 'azul'}" title="${ms > 0 ? 'adiou' : 'antecipou'}">${sinal}${texto}</span>`;
+const TERMINAIS = { btp: 'BTP', santos_brasil: 'Santos Brasil', embraport: 'Embraport' };
+const ORDEM_T = ['btp', 'santos_brasil', 'embraport'];
+const nomeTerminal = (t) => TERMINAIS[t] || t || '—';
+const classeT = (t) => (TERMINAIS[t] ? `t-${t}` : 't-outro');
+const terminalTag = (t) => `<span class="terminal"><span class="ponto ${classeT(t)}" aria-hidden="true"></span>${esc(nomeTerminal(t))}</span>`;
+const legendaTerminais = (ts) => ts.map((t) => `<span><i class="ponto ${classeT(t)}" aria-hidden="true"></i>${esc(nomeTerminal(t))}</span>`).join('');
+
+const SITUACAO = {
+  previsto: ['Previsto', 's-info'], aguardando_atracacao: ['Aguardando atracação', 's-atencao'], chegada_passou: ['Chegada passou', 's-neutro'],
+  atracado: ['Atracado', 's-forte'], encerrado: ['Encerrado', 's-neutro'],
+  aguardando: ['Aguardando', 's-info'], aberto: ['Aberto', 's-ok'], sem_dado: ['Sem dado', 's-neutro'], liberado: ['Liberado', 's-ok'], atrasado: ['Atrasado', 's-critico'],
+};
+const selo = (v, texto) => { const [t, c] = SITUACAO[v] || [v, 's-neutro']; return `<span class="selo ${c}">${esc(texto || t)}</span>`; };
+const PROBLEMAS = {
+  data_real_no_futuro: 'data "real" no futuro tratada como prevista',
+  reefer_e_abertura_de_gate: 'liberação reefer do DSS lida como abertura de gate reefer',
+  armador_igual_viagem: 'armador do DSS era a viagem',
+  armador_invalido: 'armador do DSS inválido',
+  data_suspeita: 'data a mais de 1 ano descartada',
+  saida_sem_atracacao: 'saída prevista passou sem atracação informada pelo terminal',
+};
+const ajustes = (n) => {
+  const itens = n.qualidade.filter((q) => PROBLEMAS[q.problema]);
+  return itens.length ? ` <span class="selo s-neutro" data-dica="${esc(itens.map((q) => `${q.campo}: ${PROBLEMAS[q.problema]}`).join('\n'))}" tabindex="0">dados ajustados</span>` : '';
+};
+const so = (v) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const chave = (i) => i.chave || `${String(i.terminal ?? '').trim().toLowerCase()}|${so(i.navio)}|${so(i.viagem)}`;
+const botaoNavio = (i) => `<button type="button" class="nome" data-chave="${esc(chave(i))}">${esc(i.navio)}</button>`;
+
+async function api(caminho) {
+  const res = await fetch(caminho);
+  const corpo = await res.json();
+  if (!res.ok) throw new Error(corpo.erro || `HTTP ${res.status}`);
+  return corpo;
+}
+
+// ============================================================ estado
+let dados = null;            // resposta de /api/painel
+let mudancas = null;         // resposta de /api/mudancas (7 dias)
+let qualidade = null;        // resposta de /api/qualidade
+let metrica = lembrar('metrica', 'chegada');
+let vista = lembrar('vista', 'tabela');
+let especial = null;         // filtro vindo dos indicadores: deadline24 | atrasadas | gateAberto
+let agendaCompleta = false;
+const ativos = () => (dados ? dados.navios.filter((n) => n.situacao.navio !== 'encerrado') : []);
+
+// ============================================================ carregar
+function filtrosGlobais() {
+  const f = new FormData($('#filtros'));
+  const q = new URLSearchParams();
+  for (const k of ['terminal', 'armador', 'navio', 'dias']) if (f.get(k)) q.set(k, f.get(k));
+  return q;
+}
+
+async function carregar(atualizar = false) {
+  const q = filtrosGlobais();
+  q.set('encerrados', 'true');
+  if (atualizar) q.set('atualizar', 'true');
+  const botao = $('#atualizar');
+  botao.setAttribute('aria-busy', 'true');
+  try {
+    dados = await api(`/api/painel?${q}`);
+    mostrarAviso(dados.aviso);
+    preencherArmadores(dados.armadores);
+    mostrarEstado();
+    desenhar();
+    if (atualizar || abaAtual() === 'mudancas') carregarMudancas();
+    if (atualizar && qualidade) carregarQualidade();
+  } catch (e) {
+    mostrarAviso(`Não foi possível carregar os dados: ${e.message}`, true);
+    $('#estado').textContent = 'Sem dados do DSS';
+  } finally {
+    botao.removeAttribute('aria-busy');
   }
-  const NO_REGISTRO = { novo: 'entrou na lista do DSS', removido: 'saiu da lista do DSS', voltou: 'voltou à lista do DSS' };
-  function textoMudanca(m) {
-    if (m.campo === 'registro') return `<span class="suave">${esc(NO_REGISTRO[m.para] || m.para)}</span>`;
-    if (m.campo === 'armador') return `Armador: <span class="antigo">${esc(m.de)}</span><span class="seta">→</span><strong>${esc(m.para)}</strong>`;
-    const de = dssIso(m.de);
-    const para = dssIso(m.para);
-    return `${esc(m.rotulo)}: ${de ? `<span class="antigo">${data(de)}</span>` : '<span class="suave">sem data</span>'}<span class="seta">→</span><strong>${para ? data(para) : 'sem data'}</strong>${de && para && de !== para ? ` ${diferenca(Date.parse(para) - Date.parse(de))}` : ''}`;
+}
+
+function mostrarAviso(texto, erro = false) {
+  const a = $('#aviso');
+  a.hidden = !texto;
+  a.classList.toggle('erro', erro);
+  a.firstElementChild.textContent = texto || '';
+}
+
+function preencherArmadores(lista) {
+  const sel = $('#filtros [name=armador]');
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' + lista.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  sel.value = lista.includes(atual) ? atual : '';
+}
+
+function mostrarEstado() {
+  const idade = Date.now() - ms(dados.consultadoEm);
+  const al = dados.alertas;
+  const luz = al ? (al.erro ? 'falha' : 'ok') : '';
+  const textoAl = al ? (al.erro ? 'Alertas por e-mail com falha' : 'Alertas por e-mail ligados') : 'Alertas por e-mail desligados';
+  $('#estado').innerHTML = `<span>DSS consultado às <strong>${hora(dados.consultadoEm)}</strong>${idade > 5 * 60e3 ? ` (há ${duracao(idade)})` : ''}</span>
+    <span><strong>${dados.qtdRegistrosDss}</strong> atracações recebidas</span>
+    <span data-dica="${esc(al?.erro || (al ? `Para ${al.para.join(', ')}` : 'Defina RESEND_API_KEY e ALERTA_PARA no Render.'))}" tabindex="0"><i class="luz ${luz}" aria-hidden="true"></i>${textoAl}</span>`;
+  $('#alertas').textContent = al ? `${textoAl}${al.ultimoEnvio ? `, último envio em ${data(al.ultimoEnvio)}` : ''}${al.erro ? `: ${al.erro}` : ''}.` : `${textoAl}.`;
+}
+
+function desenhar() {
+  if (!dados) return;
+  $('#c-navios').textContent = ativos().length;
+  $('#c-mudancas').textContent = dados.mudancas.filter((m) => m.campo !== 'registro').length || '';
+  mostrarProximo();
+  mostrarIndicadores();
+  mostrarFaixa();
+  mostrarPorDia();
+  mostrarAtencao();
+  mostrarAgenda();
+  mostrarNavios();
+}
+
+// ============================================================ visão geral
+function mostrarProximo() {
+  const agora = Date.now();
+  const futuros = ativos().filter((n) => ms(n.datas.deadline) > agora).sort((a, b) => ms(a.datas.deadline) - ms(b.datas.deadline));
+  const el = $('#proximo');
+  if (!futuros.length) {
+    el.className = 'painel destaque';
+    el.innerHTML = '<p class="rotulo">Próximo deadline</p><p class="navio-grande">Nenhum deadline à frente</p><p class="suave">Não há deadline previsto para os navios e o período escolhidos.</p>';
+    return;
   }
-  const AVISO_MEMORIA = '<p class="suave">O histórico está guardado em memória e recomeça quando o servidor reinicia. Para guardar de vez, configure DATABASE_URL no Render.</p>';
+  const n = futuros[0];
+  const falta = ms(n.datas.deadline) - agora;
+  const h = Math.floor(falta / HORA), m = Math.floor((falta % HORA) / 60000);
+  const contagem = h >= 48 ? `${Math.floor(h / 24)}<small>d</small> ${h % 24}<small>h</small>` : `${h}<small>h</small> ${String(m).padStart(2, '0')}<small>min</small>`;
+  const em24 = futuros.filter((x) => ms(x.datas.deadline) - agora <= 24 * HORA);
+  const seguintes = futuros.slice(1, 4);
+  const gate = n.situacao.gate === 'aberto' ? 'gate aberto' : n.situacao.gate === 'aguardando' ? 'o gate ainda não abriu' : '';
+  el.className = `painel destaque${falta < 6 * HORA ? ' urgente' : ''}`;
+  el.innerHTML = `<p class="rotulo">Próximo deadline fecha em</p>
+    <p class="contagem num" aria-label="${esc(duracao(falta))}">${contagem}</p>
+    <p class="navio-grande">${botaoNavio(n)}</p>
+    <p class="linha-meta">${terminalTag(n.terminal)}<span>viagem ${esc(n.viagem)}</span><span>${esc(nomeDia(ms(n.datas.deadline)))} às ${hora(n.datas.deadline)}</span>${gate ? `<span>${gate}</span>` : ''}</p>
+    ${seguintes.length ? `<div class="depois"><span class="suave">${em24.length > 1 ? `Mais ${em24.length - 1} deadline${em24.length > 2 ? 's' : ''} nas próximas 24 horas.` : 'Os próximos:'}</span>
+      <ol>${seguintes.map((x) => `<li><span class="num">${data(x.datas.deadline)}</span><span>${botaoNavio(x)}</span>${terminalTag(x.terminal)}</li>`).join('')}</ol></div>` : ''}`;
+}
 
-  let mostrarTodasMudancas = false;
-  function mostrarMudancas(lista, tipo) {
-    const datas = lista.filter((m) => m.campo !== 'registro');
-    const lista_ = lista.filter((m) => m.campo === 'registro');
-    const conta = (p) => lista_.filter((m) => m.para === p).length;
-    const entradas = [conta('novo') && `${conta('novo')} entraram`, conta('removido') && `${conta('removido')} saíram`, conta('voltou') && `${conta('voltou')} voltaram`].filter(Boolean);
-    const visiveis = mostrarTodasMudancas ? datas : datas.slice(0, 12);
-    $('#mudancas').innerHTML =
-      (datas.length
-        ? `<ul class="mudancas">${visiveis.map((m) => `<li><span class="suave">${fmtHora.format(new Date(m.em)).replace(',', '')}</span> · ${botaoNavio(m)} <span class="suave">v. ${esc(m.viagem)} · ${esc(terminal(m.terminal))}</span><br>${textoMudanca(m)}</li>`).join('')}</ul>` +
-          (datas.length > 12 ? `<button class="leve" type="button" id="todas-mudancas">${mostrarTodasMudancas ? 'Mostrar menos' : `Mostrar todas (${datas.length})`}</button>` : '')
-        : '<p class="suave">Nenhuma data mudou nas últimas 24 horas nos navios filtrados.</p>') +
-      (entradas.length ? `<p class="suave">Lista do DSS: ${entradas.join(', ')}.</p>` : '') +
-      (tipo === 'memoria' ? AVISO_MEMORIA : '');
+function mostrarIndicadores() {
+  const agora = Date.now();
+  const at = ativos();
+  const aguardando = at.filter((n) => n.situacao.navio === 'aguardando_atracacao');
+  const maiorEspera = Math.max(0, ...aguardando.map((n) => n.horas.esperaAtracacao || 0));
+  const atracados = at.filter((n) => n.situacao.navio === 'atracado');
+  const gates = at.filter((n) => n.situacao.gate === 'aberto');
+  const dl24 = at.filter((n) => ms(n.datas.deadline) > agora && ms(n.datas.deadline) <= agora + 24 * HORA);
+  const atrasadas = at.filter((n) => n.situacao.dry === 'atrasado' || n.situacao.reefer === 'atrasado');
+  const ind = (valor, nome, detalhe, acao, classe = '') => `<button type="button" class="indicador ${classe}" data-acao="${acao}"><span class="valor">${valor}</span><span class="nome">${nome}</span><span class="detalhe">${detalhe}</span></button>`;
+  $('#indicadores').innerHTML = [
+    ind(at.length, 'Navios no período', `${dados.navios.length - at.length} encerrados fora da conta`, 'todos'),
+    ind(aguardando.length, 'Aguardando atracação', aguardando.length ? `Maior espera: ${Math.round(maiorEspera)} h` : 'Nenhum na fila', 'situacao:aguardando_atracacao', aguardando.length ? 'atencao' : ''),
+    ind(atracados.length, 'Atracados agora', 'Com atracação informada pelo terminal', 'situacao:atracado'),
+    ind(gates.length, 'Gates dry abertos', 'Recebendo contêineres de exportação', 'gate:aberto'),
+    ind(dl24.length, 'Deadlines em 24 horas', dl24.length ? `O primeiro às ${hora(dl24.sort((a, b) => ms(a.datas.deadline) - ms(b.datas.deadline))[0].datas.deadline)}` : 'Nenhum no próximo dia', 'especial:deadline24', dl24.length ? 'atencao' : ''),
+    ind(atrasadas.length, 'Liberações atrasadas', atrasadas.length ? 'Importação prevista e não liberada' : 'Nenhuma atrasada', 'especial:atrasadas', atrasadas.length ? 'alerta' : ''),
+  ].join('');
+}
+
+const PISTAS = [
+  ['deadline', 'Deadline'],
+  ['gate', 'Abertura de gate'],
+  ['chegada', 'Chegada'],
+  ['atracacao', 'Atracação'],
+  ['liberacao', 'Liberação'],
+  ['saida', 'Saída'],
+];
+const NOME_EVENTO = Object.fromEntries(PISTAS);
+
+/** Eventos previstos entre ini e fim, a partir dos navios não encerrados. */
+function eventos(ini, fim) {
+  const lista = [];
+  const dentro = (iso) => iso && ms(iso) > ini && ms(iso) <= fim;
+  for (const n of ativos()) {
+    const d = n.datas;
+    if (dentro(d.deadline)) lista.push({ tipo: 'deadline', em: d.deadline, n, extra: n.situacao.gate === 'aguardando' ? 'gate ainda fechado' : '' });
+    if (!d.aberturaGate && dentro(d.prevAberturaGate)) lista.push({ tipo: 'gate', em: d.prevAberturaGate, n, extra: 'dry' });
+    if (!d.aberturaGateReefer && dentro(d.prevAberturaGateReefer)) lista.push({ tipo: 'gate', em: d.prevAberturaGateReefer, n, extra: 'reefer' });
+    if (!d.atracacao && dentro(d.prevChegada)) lista.push({ tipo: 'chegada', em: d.prevChegada, n });
+    if (!d.atracacao && dentro(d.prevAtracacao)) lista.push({ tipo: 'atracacao', em: d.prevAtracacao, n });
+    if (!d.liberacaoDry && dentro(d.prevLiberacaoDry)) lista.push({ tipo: 'liberacao', em: d.prevLiberacaoDry, n, extra: 'dry' });
+    if (!d.liberacaoReefer && dentro(d.prevLiberacaoReefer)) lista.push({ tipo: 'liberacao', em: d.prevLiberacaoReefer, n, extra: 'reefer' });
+    if (dentro(d.prevSaida)) lista.push({ tipo: 'saida', em: d.prevSaida, n });
   }
+  return lista.sort((a, b) => ms(a.em) - ms(b.em));
+}
+const textoEvento = (e) => `${NOME_EVENTO[e.tipo]}${e.extra ? ` (${e.extra})` : ''}: ${nomeDia(ms(e.em)).split(',')[0].toLowerCase()} às ${hora(e.em)}\n${e.n.navio}, viagem ${e.n.viagem}\n${nomeTerminal(e.n.terminal)}${e.n.armador ? `, ${e.n.armador}` : ''}\nfaltam ${duracao(ms(e.em) - Date.now())}`;
 
-  // ---- detalhe do navio
-  const EVENTOS = [
-    ['chegada', 'Chegada', 'prevChegada', null],
-    ['atracacao', 'Atracação', 'prevAtracacao', 'atracacao'],
-    ['gate', 'Abertura do gate dry', 'prevAberturaGate', 'aberturaGate'],
-    ['gateReefer', 'Abertura do gate reefer', 'prevAberturaGateReefer', 'aberturaGateReefer'],
-    ['deadline', 'Deadline', 'deadline', null],
-    ['dry', 'Liberação dry', 'prevLiberacaoDry', 'liberacaoDry'],
-    ['reefer', 'Liberação reefer', 'prevLiberacaoReefer', 'liberacaoReefer'],
-    ['saida', 'Saída', 'prevSaida', null],
-  ];
-  const EVENTO_DO_CAMPO = {
-    data_prev_chegada: 'chegada', data_prev_atracacao: 'atracacao', data_atracacao: 'atracacao', data_prev_saida: 'saida',
-    data_prev_abertura_gate: 'gate', data_abertura_gate: 'gate', data_deadline: 'deadline', data_prev_lib_dry: 'dry', data_lib_dry: 'dry',
-  };
-  const eventoDe = (m) => EVENTO_DO_CAMPO[m.campo] || (/reefer/.test(m.campo) ? (/gate/i.test(m.rotulo) ? 'gateReefer' : 'reefer') : null);
+function terminaisPresentes(lista) {
+  const ts = new Set(lista.map((x) => x.terminal));
+  return [...ORDEM_T.filter((t) => ts.has(t)), ...[...ts].filter((t) => !ORDEM_T.includes(t)).sort()];
+}
 
-  async function abrirDetalhe(ch) {
-    const dlg = $('#detalhe');
-    $('#detalhe-titulo').innerHTML = `<h2>${esc(ch.split('|')[1])}</h2>`;
-    $('#detalhe-corpo').innerHTML = '<p class="suave">Carregando…</p>';
-    if (!dlg.open) dlg.showModal();
-    try {
-      mostrarDetalhe(await api(`/api/navio?chave=${encodeURIComponent(ch)}`));
-    } catch (e) {
-      $('#detalhe-corpo').innerHTML = `<p class="erro">${esc(e.message)}</p>`;
-    }
-  }
-
-  function mostrarDetalhe(d) {
-    const n = d.navio;
-    const ref = n || d.mudancas[0];
-    $('#detalhe-titulo').innerHTML = `<h2 style="font-size:18px;margin:0">${esc(ref.navio)}</h2>
-      <div class="suave">v. ${esc(ref.viagem)}${n ? ` · ${esc(n.armador)}` : ''} · ${esc(terminal(ref.terminal))}</div>
-      ${n ? `<div style="margin-top:4px">${pill(n.situacao.navio)} ${pill(n.situacao.gate, `gate dry: ${(ROTULO[n.situacao.gate] || [n.situacao.gate])[0].toLowerCase()}`)}${ajustes(n)}</div>` : ''}`;
-
-    let html = '';
-    if (n) {
-      const porEvento = {};
-      for (const m of d.mudancas) { const e = eventoDe(m); if (e) porEvento[e] = (porEvento[e] || 0) + 1; }
-      const agora = Date.now();
-      const itens = EVENTOS.map(([id, rotulo, p, r]) => {
-        const prev = n.datas[p];
-        const real = r ? n.datas[r] : null;
-        return { id, rotulo, prev, real, quando: real || prev };
-      });
-      const comData = itens.filter((i) => i.quando).sort((a, b) => a.quando.localeCompare(b.quando));
-      const semData = itens.filter((i) => !i.quando);
-      let marcouAgora = false;
-      const linhas = [];
-      for (const i of comData) {
-        const passou = Date.parse(i.quando) <= agora;
-        if (!passou && !marcouAgora) { linhas.push(`<li class="agora"><span class="ponto"></span><span>agora · ${data(new Date().toISOString())}</span></li>`); marcouAgora = true; }
-        const estado = i.real
-          ? `<span class="pill verde">realizado</span>${i.prev && i.prev !== i.real ? ` <span class="suave">previsto ${data(i.prev)}</span>` : ''}`
-          : `<span class="suave">${passou ? 'previsto (já passou)' : 'previsto'}</span>`;
-        const mudou = porEvento[i.id] ? ` <span class="pill laranja">mudou ${porEvento[i.id]}×</span>` : '';
-        linhas.push(`<li class="${passou ? 'passou' : ''}"><span class="ponto"></span><span>${data(i.quando)}</span><span><strong>${i.rotulo}</strong> ${estado}${mudou}</span></li>`);
-      }
-      if (!marcouAgora) linhas.push(`<li class="agora"><span class="ponto"></span><span>agora · ${data(new Date().toISOString())}</span></li>`);
-      html += `<h2>Sequência de datas</h2><ul class="sequencia">${linhas.join('')}</ul>`;
-      if (semData.length) html += `<p class="suave">Sem data no DSS: ${semData.map((i) => i.rotulo).join(', ')}.</p>`;
-    } else {
-      html += '<p class="suave">Este navio não está mais na lista atual do DSS. Abaixo, o que ficou registrado no histórico.</p>';
-    }
-
-    html += '<h2>Histórico de mudanças</h2>';
-    html += d.mudancas.length
-      ? `<ul class="mudancas">${d.mudancas.map((m) => `<li><span class="suave">${fmtHora.format(new Date(m.em)).replace(',', '')}</span> · ${textoMudanca(m)}</li>`).join('')}</ul>`
-      : '<p class="suave">Nenhuma mudança registrada para este navio.</p>';
-    if (d.historico === 'memoria') html += AVISO_MEMORIA;
-    $('#detalhe-corpo').innerHTML = html;
-  }
-
-  async function api(caminho) {
-    const res = await fetch(caminho);
-    const corpo = await res.json();
-    if (!res.ok) throw new Error(corpo.erro || `HTTP ${res.status}`);
-    return corpo;
-  }
-
-  function filtrosAtuais() {
-    return new URLSearchParams([...new FormData($('#filtros'))].filter(([, v]) => v));
-  }
-
-  async function carregar(atualizar = false) {
-    const q = filtrosAtuais();
-    if (atualizar) q.set('atualizar', 'true');
-    $('#status').textContent = 'Consultando…';
-    try {
-      const lista = await api(`/api/painel?${q}`);
-      const { resumo } = lista;
-      $('#status').innerHTML = `${lista.total} de ${lista.qtdRegistrosDss} atracações · DSS consultado ${data(lista.consultadoEm)}${lista.aviso ? `<div class="erro">${esc(lista.aviso)}</div>` : ''}`;
-      preencherOpcoes('terminal', lista.terminais, terminal);
-      preencherOpcoes('armador', lista.armadores);
-      mostrarCartoes(resumo);
-      mostrarProximas(resumo);
-      ultimasMudancas = [lista.mudancas || [], lista.historico];
-      mostrarMudancas(...ultimasMudancas);
-      mostrarTabela(lista.navios);
-      mostrarLinha(lista.navios, q.get('dias'));
-      const qx = new URLSearchParams(q);
-      qx.delete('atualizar');
-      $('#excel').href = `/api/navios.xlsx?${qx}`;
-      const al = lista.alertas;
-      $('#alertas').innerHTML = al
-        ? `Alertas por e-mail para ${esc(al.para.join(', '))}: deadlines em 24 h, gates abertos e datas que mudaram.${al.ultimoEnvio ? ` Último envio ${data(al.ultimoEnvio)}.` : ''}${al.erro ? ` <span class="erro">Falha no envio: ${esc(al.erro)}</span>` : ''}`
-        : 'Alertas por e-mail desligados.';
-    } catch (e) {
-      $('#status').innerHTML = `<span class="erro">${esc(e.message)}</span>`;
-      ['#cartoes', '#proximas', '#mudancas', '#tabela', '#linha'].forEach((s) => ($(s).innerHTML = ''));
-    }
-  }
-
-  function preencherOpcoes(nome, valores, rotulo = (v) => v) {
-    const sel = $(`#filtros [name=${nome}]`);
-    const atual = sel.value;
-    sel.innerHTML = '<option value="">Todos</option>' + valores.map((v) => `<option value="${esc(v)}">${esc(rotulo(v))}</option>`).join('');
-    sel.value = atual;
-  }
-
-  function mostrarCartoes(r) {
-    const c = (n, texto, campo, valor) => `<button type="button" data-campo="${campo}" data-valor="${valor}"><strong>${n || 0}</strong>${texto}</button>`;
-    $('#cartoes').innerHTML = [
-      c(r.total, 'atracações', '', ''),
-      c(r.porSituacao.previsto, 'previstas', 'situacao', 'previsto'),
-      c(r.porSituacao.aguardando_atracacao, 'aguardando atracação', 'situacao', 'aguardando_atracacao'),
-      c(r.porSituacao.atracado, 'atracados', 'situacao', 'atracado'),
-      c(r.porGate.aberto, 'gates abertos', 'gate', 'aberto'),
-      c(r.porGate.aguardando, 'gates a abrir', 'gate', 'aguardando'),
-      c(r.deadlines.length, `deadlines em ${r.proximasHoras} h`, 'gate', 'aberto'),
-      c(r.liberacoes.length, `liberações em ${r.proximasHoras} h`, '', ''),
-    ].join('');
-  }
-
-  function mostrarProximas(r) {
-    $('#janela').textContent = r.proximasHoras;
-    const bloco = (titulo, itens, linha) => `<div><h2>${titulo}</h2>${itens.length ? `<ul>${itens.map((i) => `<li>${linha(i)}</li>`).join('')}</ul>` : '<p class="suave">Nada previsto.</p>'}</div>`;
-    const nome = (i) => `${botaoNavio(i)} <span class="suave">v. ${esc(i.viagem)} · ${esc(terminal(i.terminal))}</span>`;
-    $('#proximas').innerHTML = [
-      bloco('Deadlines (gate aberto)', r.deadlines, (i) => `${data(i.deadline)} · ${nome(i)} <span class="suave">faltam ${i.horasRestantes} h</span>`),
-      bloco('Aberturas de gate', r.aberturasGate, (i) => `${data(i.prevista)} · ${i.tipo} · ${nome(i)}`),
-      bloco('Chegadas', r.chegadas, (i) => `${data(i.prevChegada)} · ${nome(i)}`),
-      bloco('Atracações', r.atracacoes, (i) => `${data(i.prevAtracacao)} · ${nome(i)}`),
-      bloco('Liberações de importação', r.liberacoes, (i) => `${data(i.prevista)} · ${i.tipo} · ${nome(i)}`),
-      bloco('Aguardando atracação', r.aguardandoAtracacao, (i) => `${nome(i)} <span class="suave">há ${Math.round(i.horasDeEspera)} h (chegada ${data(i.esperadoEm)})</span>`),
-      ...(r.atrasados.length ? [bloco('Liberações atrasadas', r.atrasados, (i) => `${nome(i)} ${i.situacao.dry === 'atrasado' ? pill('atrasado', 'dry') : ''}${i.situacao.reefer === 'atrasado' ? pill('atrasado', 'reefer') : ''}`)] : []),
-    ].join('');
-  }
-
-  function mostrarTabela(navios) {
-    const linhas = navios.map((n) => `<tr>
-        <td>${botaoNavio(n)}${n.mudancas24h ? ` <span class="pill laranja" title="datas que mudaram nas últimas 24 h">mudou ${n.mudancas24h}×</span>` : ''}${ajustes(n)}<div class="suave">v. ${esc(n.viagem)} · ${esc(n.armador)}${n.armadorOrigem && n.armadorOrigem !== 'dss' ? ` <span title="armador deduzido pelo ${esc(n.armadorOrigem)}">(deduzido)</span>` : ''}</div></td>
-        <td>${esc(terminal(n.terminal))}</td>
-        <td>${pill(n.situacao.navio)}${n.horas.esperaAtracacao ? `<div class="suave">há ${Math.round(n.horas.esperaAtracacao)} h</div>` : ''}</td>
-        <td>${data(n.datas.prevChegada)}</td>
-        <td>${prevReal(n.datas.prevAtracacao, n.datas.atracacao, n.horas.atrasoAtracacao)}</td>
-        <td>${data(n.datas.prevSaida)}${n.horas.estadia !== null ? `<div class="suave">${n.horas.estadia} h no berço</div>` : ''}</td>
-        <td>${pill(n.situacao.gate)}<div>${prevReal(n.datas.prevAberturaGate, n.datas.aberturaGate, n.horas.atrasoAberturaGate)}</div></td>
-        <td>${pill(n.situacao.gateReefer)}<div>${prevReal(n.datas.prevAberturaGateReefer, n.datas.aberturaGateReefer)}</div></td>
-        <td>${data(n.datas.deadline)}${n.horas.ateDeadline !== null && n.situacao.gate === 'aberto' ? `<div class="suave">faltam ${n.horas.ateDeadline} h</div>` : ''}</td>
-        <td>${pill(n.situacao.dry)}<div>${prevReal(n.datas.prevLiberacaoDry, n.datas.liberacaoDry, n.horas.atrasoLiberacaoDry)}</div></td>
-        <td>${pill(n.situacao.reefer)}<div>${prevReal(n.datas.prevLiberacaoReefer, n.datas.liberacaoReefer, n.horas.atrasoLiberacaoReefer)}</div></td>
-      </tr>`).join('');
-    $('#tabela').innerHTML = `<div class="tabela"><table><thead><tr>
-        <th>Navio</th><th>Terminal</th><th>Situação</th><th>Chegada prev.</th><th>Atracação</th><th>Saída prev.</th>
-        <th>Gate dry</th><th>Gate reefer</th><th>Deadline</th><th>Liberação dry</th><th>Liberação reefer</th>
-      </tr></thead><tbody>${linhas || '<tr><td colspan="11">Nenhuma atracação com esses filtros.</td></tr>'}</tbody></table></div>`;
-  }
-
-  // ---- linha do tempo por terminal
-  // O DSS não informa o berço: cada linha é um navio, do início da estadia (atracação real, prevista ou,
-  // sem elas, a chegada) até a saída prevista. Embaixo, a janela do gate (abertura até o deadline).
-  const DIA_MS = 864e5;
-  const fmtDia = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: '2-digit' });
-  const partesSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
-  const meiaNoiteSP = (ms) => { const [y, m, d] = partesSP.format(new Date(ms)).split('-').map(Number); return Date.UTC(y, m - 1, d, 3); };
-
-  function mostrarLinha(navios, dias) {
-    const agora = Date.now();
-    const ini = meiaNoiteSP(agora - 2 * DIA_MS);
-    const fim = meiaNoiteSP(agora + (Number(dias) > 0 ? Math.min(Number(dias), 30) : 14) * DIA_MS) + DIA_MS;
-    const pos = (ms) => Math.min(100, Math.max(0, ((ms - ini) / (fim - ini)) * 100));
-    const faixa = (a, b, classe, extra = '') => `<span class="${classe}" style="left:${pos(a)}%;width:${Math.max(pos(b) - pos(a), 0.5)}%" ${extra}></span>`;
-
-    const itens = navios
-      .map((n) => {
-        const d = n.datas;
-        const inicio = d.atracacao || d.prevAtracacao || d.prevChegada;
-        if (!inicio) return null;
-        const s = Date.parse(inicio);
-        const e = d.prevSaida ? Date.parse(d.prevSaida) : s + DIA_MS;
-        if (e < s || e < ini || s > fim) return null;
-        return { n, s, e, estimado: !d.atracacao && !d.prevAtracacao, semSaida: !d.prevSaida };
-        // "estimado" só muda o texto da dica: o DSS nunca manda a atracação prevista, então começar pela chegada é o normal.
-      })
-      .filter(Boolean);
-
-    const dias_ = [];
-    for (let t = ini; t < fim; t += DIA_MS) dias_.push(t);
-    const grade = dias_.map((t) => `<span class="gantt-fundo" style="left:${pos(t)}%"></span>`).join('') + (agora >= ini && agora <= fim ? `<span class="gantt-agora" style="left:${pos(agora)}%" title="agora"></span>` : '');
-    const eixo = `<div class="gantt-linha gantt-eixo"><div class="gantt-rotulo suave">Navio</div><div class="gantt-trilho">${dias_.map((t) => `<span class="gantt-dia" style="left:${pos(t)}%">${fmtDia.format(new Date(t + 12 * 36e5)).replace('.', '')}</span>`).join('')}</div></div>`;
-
-    const porTerminal = {};
-    for (const i of itens) (porTerminal[i.n.terminal] ||= []).push(i);
-    const blocos = Object.keys(porTerminal).sort().map((t) => {
-      const linhas = porTerminal[t].sort((a, b) => a.s - b.s).map(({ n, s, e, estimado, semSaida }) => {
-        const d = n.datas;
-        const abertura = d.aberturaGate || d.prevAberturaGate;
-        const gate = abertura && d.deadline && Date.parse(d.deadline) > Date.parse(abertura) ? faixa(Date.parse(abertura), Date.parse(d.deadline), 'gantt-gate', `title="Gate dry ${data(abertura)} até o deadline ${data(d.deadline)}"`) : '';
-        const dl = d.deadline && Date.parse(d.deadline) >= ini && Date.parse(d.deadline) <= fim ? `<span class="gantt-deadline" style="left:${pos(Date.parse(d.deadline))}%" title="Deadline ${data(d.deadline)}"></span>` : '';
-        const titulo = `${n.navio} · ${(ROTULO[n.situacao.navio] || [n.situacao.navio])[0]} · ${estimado ? 'chegada' : d.atracacao ? 'atracou' : 'atracação prevista'} ${data(new Date(s).toISOString())} → ${semSaida ? 'sem saída prevista' : `saída ${data(d.prevSaida)}`}`;
-        const barra = `<button type="button" class="gantt-barra ${esc(n.situacao.navio)}${semSaida ? ' estimado' : ''}" data-chave="${esc(chave(n))}" style="left:${pos(s)}%;width:${Math.max(pos(e) - pos(s), 0.6)}%" title="${esc(titulo)}" aria-label="${esc(titulo)}"></button>`;
-        return `<div class="gantt-linha"><div class="gantt-rotulo">${botaoNavio(n)} <span class="suave">${esc(n.viagem)}</span></div><div class="gantt-trilho">${grade}${gate}${dl}${barra}</div></div>`;
-      });
-      return `<div class="gantt-terminal">${esc(terminal(t))} <span class="suave">· ${linhas.length} navio(s)</span></div>${linhas.join('')}`;
+function mostrarFaixa() {
+  const ini = Date.now(), fim = ini + 48 * HORA;
+  const ev = eventos(ini, fim);
+  $('#legenda-faixa').innerHTML = legendaTerminais(terminaisPresentes(ativos()));
+  if (!ev.length) { $('#faixa').innerHTML = '<p class="vazio">Nada previsto nas próximas 48 horas para os filtros escolhidos.</p>'; return; }
+  const pos = (t) => ((t - ini) / (fim - ini)) * 100;
+  const marcas = [];
+  // Marcas a cada 6 h; a primeira só depois de 3 h, para não encostar no rótulo "agora".
+  for (let t = meiaNoiteSP(ini); t <= fim; t += 6 * HORA) if (t > ini + 3 * HORA) marcas.push(t);
+  const grade = marcas.map((t) => `<span class="marca-hora${(t - meiaNoiteSP(t)) === 0 ? ' dia' : ''}" style="left:${pos(t)}%"></span>`).join('');
+  const eixo = `<div class="eixo-faixa"><div></div><div class="pista-trilho">${grade}<span class="rotulo-agora">agora ${hora(new Date(ini).toISOString())}</span>${marcas
+    .map((t) => {
+      const dia = t === meiaNoiteSP(t);
+      return `<span class="rotulo-hora${dia ? ' dia' : ''}" style="left:${pos(t)}%">${dia ? `${semana(t)} ${fDiaMes.format(new Date(t))}` : `${hora(new Date(t).toISOString())}`}</span>`;
+    })
+    .join('')}</div></div>`;
+  const pistas = PISTAS.filter(([tipo]) => tipo !== 'atracacao' || ev.some((e) => e.tipo === 'atracacao')).map(([tipo, nome]) => {
+    const itens = ev.filter((e) => e.tipo === tipo);
+    // Empilha eventos muito próximos em até 3 linhas para não esconder um atrás do outro.
+    const ultimos = [];
+    const pontos = itens.map((e) => {
+      const x = pos(ms(e.em));
+      let linha = ultimos.findIndex((u) => x - u > 1.6);
+      if (linha === -1) linha = ultimos.length < 3 ? ultimos.length : ultimos.indexOf(Math.min(...ultimos));
+      ultimos[linha] = x;
+      return { e, x, linha };
     });
+    const linhas = Math.max(1, ultimos.length);
+    const altura = 14 + linhas * 18;
+    return `<div class="pista"><div class="pista-nome"><span>${nome}</span><span class="qtd num">${itens.length}</span></div><div class="pista-trilho" style="height:${altura}px">${grade}<span class="linha-agora"></span>${pontos
+      .map(({ e, x, linha }) => `<button type="button" class="evento ${classeT(e.n.terminal)}" style="left:${x}%;top:${4 + linha * 18}px" data-chave="${esc(chave(e.n))}" data-dica="${esc(textoEvento(e))}" aria-label="${esc(textoEvento(e).replace(/\n/g, ', '))}"></button>`)
+      .join('')}</div></div>`;
+  });
+  $('#faixa').innerHTML = eixo + pistas.join('');
+}
 
-    $('#linha').innerHTML = itens.length
-      ? `<div class="gantt"><div class="gantt-grade">${eixo}${blocos.join('')}</div></div>
-         <div class="legenda"><span class="l-prev">previsto (da chegada ou atracação até a saída)</span><span class="l-atr">atracado</span><span class="l-est">sem saída prevista (1 dia estimado)</span><span class="l-gate">janela do gate dry</span><span class="l-dl">deadline</span><span class="l-agora">agora</span></div>
-         <p class="suave">O DSS não informa o berço; cada linha é um navio. Clique na barra para ver o detalhe.</p>`
-      : '<p class="suave">Nenhum navio com datas nesse período.</p>';
+/** Gráfico de colunas empilhadas. colunas: [{ rotulo, sub, destaque, segmentos: [{ classe, valor }], dica }] */
+function graficoColunas(colunas, { altura = 190 } = {}) {
+  const max = Math.max(1, ...colunas.map((c) => c.segmentos.reduce((s, x) => s + x.valor, 0)));
+  const passo = [1, 2, 5, 10, 20, 25, 50, 100].find((p) => max / p <= 4) || Math.ceil(max / 4);
+  const topo = Math.ceil(max / passo) * passo;
+  const ticks = [];
+  for (let v = 0; v <= topo; v += passo) ticks.push(v);
+  const util = altura - 24; // espaço acima do topo para o total da coluna
+  const y = ticks.map((v) => `<span style="bottom:${(v / topo) * util}px">${v}</span>`).join('');
+  const grade = ticks.slice(1).map((v) => `<span class="grafico-grade" style="bottom:${(v / topo) * util}px"></span>`).join('');
+  const cols = colunas.map((c) => {
+    const total = c.segmentos.reduce((s, x) => s + x.valor, 0);
+    const altPilha = (total / topo) * util;
+    return `<button type="button" class="coluna" data-dica="${esc(c.dica)}" aria-label="${esc(c.dica.replace(/\n/g, ', '))}"><span class="total num${total ? '' : ' zero'}">${total}</span><span class="pilha" style="height:${altPilha}px">${c.segmentos
+      .filter((s) => s.valor)
+      .map((s) => `<span class="${s.classe}" style="flex:${s.valor}"></span>`)
+      .join('')}</span></button>`;
+  });
+  return `<div class="grafico" style="--n:${colunas.length}"><div class="grafico-y" style="height:${altura}px">${y}</div><div class="grafico-area" style="height:${altura}px">${grade}${cols.join('')}</div>
+    <div class="grafico-x">${colunas.map((c) => `<span class="${c.destaque ? 'hoje' : ''}">${esc(c.rotulo)}<br><span class="fraco">${esc(c.sub || '')}</span></span>`).join('')}</div></div>`;
+}
+
+function mostrarPorDia() {
+  const campo = { chegada: 'prevChegada', deadline: 'deadline', saida: 'prevSaida' }[metrica];
+  const textos = {
+    chegada: ['Chegadas por dia', 'Navios com chegada prevista em cada dia, por terminal.', 'chegada', 'chegadas'],
+    deadline: ['Deadlines por dia', 'Deadlines em cada dia: é até quando os contêineres de exportação podem entrar no terminal.', 'deadline', 'deadlines'],
+    saida: ['Saídas por dia', 'Navios com saída prevista em cada dia, por terminal.', 'saída', 'saídas'],
+  }[metrica];
+  $('#titulo-dia').textContent = textos[0];
+  $('#sub-dia').textContent = textos[1];
+  for (const b of document.querySelectorAll('#metrica button')) b.setAttribute('aria-pressed', String(b.dataset.metrica === metrica));
+  const nDias = Math.min(Math.max(Number(new FormData($('#filtros')).get('dias')) || 7, 3), 14);
+  const ini = meiaNoiteSP(Date.now());
+  const ts = terminaisPresentes(dados.navios);
+  const baldes = Array.from({ length: nDias }, () => ({}));
+  for (const n of dados.navios) {
+    const t = ms(n.datas[campo]);
+    if (!t) continue;
+    const i = Math.floor((t - ini) / DIA);
+    if (i < 0 || i >= nDias) continue;
+    (baldes[i][n.terminal] ||= []).push(n);
   }
+  const colunas = baldes.map((b, i) => {
+    const dia = ini + i * DIA + 12 * HORA;
+    const total = ts.reduce((s, t) => s + (b[t]?.length || 0), 0);
+    const linhas = ts.filter((t) => b[t]?.length).map((t) => `${nomeTerminal(t)}: ${b[t].length} (${b[t].slice(0, 4).map((n) => n.navio).join(', ')}${b[t].length > 4 ? '…' : ''})`);
+    return {
+      rotulo: i === 0 ? 'hoje' : semana(dia),
+      sub: fDiaMes.format(new Date(dia)),
+      destaque: i === 0,
+      segmentos: ts.map((t) => ({ classe: classeT(t), valor: b[t]?.length || 0 })),
+      dica: `${nomeDia(dia)}\n${total} ${total === 1 ? textos[2] : textos[3]}${linhas.length ? `\n${linhas.join('\n')}` : ''}`,
+    };
+  });
+  $('#por-dia').innerHTML = graficoColunas(colunas);
+  $('#legenda-dia').innerHTML = legendaTerminais(ts);
+}
 
-  // Tabela ou linha do tempo (lembra a escolha neste navegador).
-  function mostrarVista(vista) {
-    for (const b of document.querySelectorAll('.abas button')) b.setAttribute('aria-selected', String(b.dataset.vista === vista));
-    $('#tabela').hidden = vista !== 'tabela';
-    $('#linha').hidden = vista !== 'linha';
-    try { localStorage.setItem('vista', vista); } catch {}
-  }
-  document.querySelector('.abas').addEventListener('click', (ev) => { const b = ev.target.closest('button[data-vista]'); if (b) mostrarVista(b.dataset.vista); });
-  try { const v = localStorage.getItem('vista'); if (v === 'linha') mostrarVista('linha'); } catch {}
+function mostrarAtencao() {
+  const at = ativos();
+  const aguardando = at.filter((n) => n.situacao.navio === 'aguardando_atracacao').sort((a, b) => (b.horas.esperaAtracacao || 0) - (a.horas.esperaAtracacao || 0));
+  const atrasadas = at.filter((n) => n.situacao.dry === 'atrasado' || n.situacao.reefer === 'atrasado');
+  const mud = dados.mudancas.filter((m) => m.campo !== 'registro');
+  const bloco = (titulo, itens, linha, link = '') => `<div class="atencao-bloco"><h3><span>${titulo}</span>${link}</h3>${itens.length ? `<ul class="lista">${itens.map(linha).join('')}</ul>` : '<p class="suave">Nenhum no momento.</p>'}</div>`;
+  $('#atencao').innerHTML = `<h2 style="margin-bottom:12px">Pede atenção</h2>
+    ${bloco('Aguardando atracação', aguardando.slice(0, 6), (n) => `<li>${botaoNavio(n)}${terminalTag(n.terminal)}<span class="direita">há ${Math.round(n.horas.esperaAtracacao || 0)} h</span></li>`, aguardando.length > 6 ? `<a href="#navios" data-acao="situacao:aguardando_atracacao">Ver os ${aguardando.length}</a>` : '')}
+    ${atrasadas.length ? bloco('Liberações atrasadas', atrasadas.slice(0, 5), (n) => `<li>${botaoNavio(n)}${terminalTag(n.terminal)}<span class="direita">${n.situacao.dry === 'atrasado' ? 'dry' : ''}${n.situacao.dry === 'atrasado' && n.situacao.reefer === 'atrasado' ? ' e ' : ''}${n.situacao.reefer === 'atrasado' ? 'reefer' : ''}</span></li>`) : ''}
+    ${bloco('Datas que mudaram nas últimas 24 horas', mud.slice(0, 5), (m) => `<li>${botaoNavio(m)}<span class="suave">${esc(m.rotulo)}</span><span class="direita">${textoDiferenca(m)}</span></li>`, mud.length ? `<a href="#mudancas">Ver todas</a>` : '')}
+    ${dados.historico === 'memoria' ? '<p class="fraco" style="margin-top:10px;font-size:13px">O histórico de mudanças recomeça quando o servidor reinicia (sem banco de dados).</p>' : ''}`;
+}
 
-  // ---- qualidade dos dados
-  async function carregarQualidade() {
-    try {
-      mostrarQualidade(await api('/api/qualidade'));
-    } catch (e) {
-      $('#qualidade').innerHTML = `<p class="erro">${esc(e.message)}</p>`;
+function mostrarAgenda() {
+  const ev = eventos(Date.now(), Date.now() + 48 * HORA);
+  if (!ev.length) { $('#agenda').innerHTML = '<p class="vazio">Nada previsto nas próximas 48 horas.</p>'; return; }
+  const limite = agendaCompleta ? ev.length : 24;
+  let html = '';
+  let diaAtual = null;
+  let aberto = false;
+  for (const e of ev.slice(0, limite)) {
+    const d = meiaNoiteSP(ms(e.em));
+    if (d !== diaAtual) {
+      if (aberto) html += '</ul>';
+      html += `<h3 class="agenda-dia">${esc(nomeDia(ms(e.em)))}</h3><ul class="lista agenda">`;
+      diaAtual = d;
+      aberto = true;
     }
+    html += `<li><span class="hora">${hora(e.em)}</span><span class="tipo">${NOME_EVENTO[e.tipo]}${e.extra ? ` ${esc(e.extra)}` : ''}</span><span>${botaoNavio(e.n)} <span class="fraco">${esc(e.n.viagem)}</span></span><span class="direita">${terminalTag(e.n.terminal)}</span></li>`;
   }
-  function mostrarQualidade({ terminais, texto, historico }) {
-    if (!terminais.length) { $('#qualidade').innerHTML = '<p class="suave">Sem registros.</p>'; return; }
-    const cor = (p) => (p >= 90 ? 'verde' : p >= 50 ? 'amarelo' : 'vermelho');
-    const pctCel = (x) => (x.pct === null ? '<span class="suave" title="nenhum registro em que já deveria existir">—</span>' : `<span class="pill ${cor(x.pct)}">${x.pct}%</span> <span class="suave">${x.preenchidos}/${x.total}</span>`);
-    const rotuloGeral = (p) => ({ data_lib_reefer: 'Liberação reefer<sup>1</sup>', data_prev_lib_reefer: 'Liberação reefer prevista<sup>1</sup>' }[p.campo] || esc(p.rotulo));
-    const linha = (rotulo, cel) => `<tr><td>${rotulo}</td>${terminais.map((t) => `<td class="num">${cel(t)}</td>`).join('')}</tr>`;
-    const grupo = (titulo) => `<tr><td class="grupo" colspan="${terminais.length + 1}">${titulo}</td></tr>`;
-    const tabela = `<div class="tabela"><table class="qualidade"><thead><tr><th></th>${terminais.map((t) => `<th style="text-align:right">${esc(t.nome)}<div class="suave" style="font-weight:400">${t.registros} registros</div></th>`).join('')}</tr></thead><tbody>
-      ${grupo('Datas previstas preenchidas')}
-      ${terminais[0].previstas.map((p, i) => linha(rotuloGeral(p), (t) => pctCel(t.previstas[i]))).join('')}
+  if (aberto) html += '</ul>';
+  if (ev.length > 24) html += `<button type="button" class="mais" id="agenda-mais">${agendaCompleta ? 'Mostrar menos' : `Mostrar os ${ev.length} eventos`}</button>`;
+  $('#agenda').innerHTML = html;
+}
+
+// ============================================================ navios
+const ORDENS = {
+  referencia: (r) => r.referencia,
+  chegada: (r) => r.datas.prevChegada,
+  deadline: (r) => r.datas.deadline,
+  navio: (r) => r.navio,
+};
+const ESPECIAIS = {
+  deadline24: ['Deadline nas próximas 24 horas', (n) => ms(n.datas.deadline) > Date.now() && ms(n.datas.deadline) <= Date.now() + 24 * HORA],
+  atrasadas: ['Liberação atrasada', (n) => n.situacao.dry === 'atrasado' || n.situacao.reefer === 'atrasado'],
+};
+
+function naviosFiltrados() {
+  const sit = $('#f-situacao').value, gate = $('#f-gate').value, enc = $('#f-encerrados').checked || sit === 'encerrado';
+  const ordem = ORDENS[$('#f-ordenar').value] || ORDENS.referencia;
+  return dados.navios
+    .filter((n) => (enc || n.situacao.navio !== 'encerrado') && (!sit || n.situacao.navio === sit) && (!gate || n.situacao.gate === gate || n.situacao.gateReefer === gate) && (!especial || ESPECIAIS[especial][1](n)))
+    .sort((a, b) => String(ordem(a) ?? '~').localeCompare(String(ordem(b) ?? '~')));
+}
+
+function mostrarNavios() {
+  if (!dados) return;
+  const lista = naviosFiltrados();
+  $('#contagem-lista').textContent = `${lista.length} ${lista.length === 1 ? 'navio' : 'navios'}`;
+  $('#chip-especial').innerHTML = especial ? `<span class="chip">${ESPECIAIS[especial][0]}<button type="button" id="tirar-especial" aria-label="Tirar este filtro">×</button></span>` : '';
+  const q = filtrosGlobais();
+  for (const [id, k] of [['#f-situacao', 'situacao'], ['#f-gate', 'gate'], ['#f-ordenar', 'ordenar']]) if ($(id).value) q.set(k, $(id).value);
+  if ($('#f-encerrados').checked) q.set('encerrados', 'true');
+  $('#excel').href = `/api/navios.xlsx?${q}`;
+  for (const b of document.querySelectorAll('#vista button')) b.setAttribute('aria-pressed', String(b.dataset.vista === vista));
+  $('#tabela').hidden = vista !== 'tabela';
+  $('#linha').hidden = vista !== 'linha';
+  if (vista === 'tabela') mostrarTabela(lista); else mostrarLinha(lista);
+}
+
+const atraso = (n) => (!n ? '' : ` <span class="sub">(${n > 0 ? '+' : ''}${n} h)</span>`);
+const prevReal = (prev, real, atr) => (real ? `${data(real)}${atraso(atr)}` : prev ? `<span class="previsto">prev. ${data(prev)}</span>` : '<span class="fraco">—</span>');
+
+function mostrarTabela(navios) {
+  if (!navios.length) { $('#tabela').innerHTML = '<p class="vazio">Nenhum navio com esses filtros. Tente outro período ou limpe os filtros.</p>'; return; }
+  const linhas = navios.map((n) => `<tr>
+      <td>${botaoNavio(n)}${n.mudancas24h ? ` <span class="selo s-atencao" data-dica="Datas que mudaram nas últimas 24 horas" tabindex="0">mudou ${n.mudancas24h}×</span>` : ''}${ajustes(n)}<div class="sub">viagem ${esc(n.viagem)}, ${esc(n.armador)}${n.armadorOrigem && n.armadorOrigem !== 'dss' ? ` <span data-dica="Armador deduzido pelo ${esc(n.armadorOrigem)}" tabindex="0">(deduzido)</span>` : ''}</div></td>
+      <td>${terminalTag(n.terminal)}</td>
+      <td>${selo(n.situacao.navio)}${n.horas.esperaAtracacao ? `<div class="sub">há ${Math.round(n.horas.esperaAtracacao)} h</div>` : ''}</td>
+      <td class="num">${data(n.datas.prevChegada)}</td>
+      <td class="num">${prevReal(n.datas.prevAtracacao, n.datas.atracacao, n.horas.atrasoAtracacao)}</td>
+      <td class="num">${data(n.datas.prevSaida)}${n.horas.estadia !== null ? `<div class="sub">${n.horas.estadia} h no berço</div>` : ''}</td>
+      <td>${selo(n.situacao.gate)}<div class="num">${prevReal(n.datas.prevAberturaGate, n.datas.aberturaGate, n.horas.atrasoAberturaGate)}</div></td>
+      <td>${selo(n.situacao.gateReefer)}<div class="num">${prevReal(n.datas.prevAberturaGateReefer, n.datas.aberturaGateReefer)}</div></td>
+      <td class="num">${data(n.datas.deadline)}${n.horas.ateDeadline !== null && n.situacao.gate === 'aberto' ? `<div class="sub">faltam ${n.horas.ateDeadline} h</div>` : ''}</td>
+      <td>${selo(n.situacao.dry)}<div class="num">${prevReal(n.datas.prevLiberacaoDry, n.datas.liberacaoDry, n.horas.atrasoLiberacaoDry)}</div></td>
+      <td>${selo(n.situacao.reefer)}<div class="num">${prevReal(n.datas.prevLiberacaoReefer, n.datas.liberacaoReefer, n.horas.atrasoLiberacaoReefer)}</div></td>
+    </tr>`).join('');
+  $('#tabela').innerHTML = `<div class="tabela-rolagem"><table><thead><tr>
+      <th scope="col">Navio</th><th scope="col">Terminal</th><th scope="col">Situação</th><th scope="col">Chegada prevista</th><th scope="col">Atracação</th><th scope="col">Saída prevista</th>
+      <th scope="col">Gate dry</th><th scope="col">Gate reefer</th><th scope="col">Deadline</th><th scope="col">Liberação dry</th><th scope="col">Liberação reefer</th>
+    </tr></thead><tbody>${linhas}</tbody></table></div>`;
+}
+
+function mostrarLinha(navios) {
+  const agora = Date.now();
+  const dias = Number(new FormData($('#filtros')).get('dias'));
+  const ini = meiaNoiteSP(agora - 2 * DIA);
+  const fim = meiaNoiteSP(agora + (dias > 0 ? Math.min(dias, 30) : 14) * DIA) + DIA;
+  const pos = (t) => Math.min(100, Math.max(0, ((t - ini) / (fim - ini)) * 100));
+  const itens = navios
+    .map((n) => {
+      const d = n.datas;
+      const inicio = d.atracacao || d.prevAtracacao || d.prevChegada;
+      if (!inicio) return null;
+      const s = ms(inicio), e = d.prevSaida ? ms(d.prevSaida) : s + DIA;
+      if (e < s || e < ini || s > fim) return null;
+      return { n, s, e, semSaida: !d.prevSaida };
+    })
+    .filter(Boolean);
+  if (!itens.length) { $('#linha').innerHTML = '<p class="vazio">Nenhum navio com datas nesse período.</p>'; return; }
+  const diasEixo = [];
+  for (let t = ini; t < fim; t += DIA) diasEixo.push(t);
+  const grade = diasEixo.map((t) => `<span class="gantt-dia" style="left:${pos(t)}%"></span>`).join('') + `<span class="gantt-agora" style="left:${pos(agora)}%"></span>`;
+  const eixo = `<div class="gantt-linha gantt-eixo"><div class="gantt-rotulo suave">Navio</div><div class="gantt-trilho">${diasEixo.map((t) => `<span class="gantt-dia" style="left:${pos(t)}%">${semana(t + 12 * HORA)} ${fDiaMes.format(new Date(t + 12 * HORA))}</span>`).join('')}<span class="gantt-agora" style="left:${pos(agora)}%"></span></div></div>`;
+  const porT = {};
+  for (const i of itens) (porT[i.n.terminal] ||= []).push(i);
+  const blocos = terminaisPresentes(itens.map((i) => i.n)).map((t) => {
+    const linhas = porT[t].sort((a, b) => a.s - b.s).map(({ n, s, e, semSaida }) => {
+      const d = n.datas;
+      const abertura = d.aberturaGate || d.prevAberturaGate;
+      const gate = abertura && d.deadline && ms(d.deadline) > ms(abertura) ? `<span class="gantt-gate" style="left:${pos(ms(abertura))}%;width:${Math.max(pos(ms(d.deadline)) - pos(ms(abertura)), 0.4)}%" data-dica="${esc(`Gate dry de ${data(abertura)} até o deadline ${data(d.deadline)}`)}"></span>` : '';
+      const dl = d.deadline && ms(d.deadline) >= ini && ms(d.deadline) <= fim ? `<span class="gantt-deadline" style="left:${pos(ms(d.deadline))}%"></span>` : '';
+      const classe = n.situacao.navio === 'atracado' ? '' : n.situacao.navio === 'encerrado' ? 'encerrado' : 'previsto';
+      const dica = `${n.navio}, viagem ${n.viagem}\n${SITUACAO[n.situacao.navio]?.[0] || n.situacao.navio}\n${d.atracacao ? 'Atracou' : d.prevAtracacao ? 'Atracação prevista' : 'Chegada prevista'} ${data(new Date(s).toISOString())}\n${semSaida ? 'Sem saída prevista (1 dia estimado)' : `Saída prevista ${data(d.prevSaida)}`}${d.deadline ? `\nDeadline ${data(d.deadline)}` : ''}`;
+      return `<div class="gantt-linha"><div class="gantt-rotulo">${botaoNavio(n)} <span class="fraco">${esc(n.viagem)}</span></div><div class="gantt-trilho">${grade}${gate}${dl}<button type="button" class="gantt-barra ${classe}${semSaida ? ' estimado' : ''}" style="--cor:var(--${classeT(n.terminal)});left:${pos(s)}%;width:${Math.max(pos(e) - pos(s), 0.6)}%" data-chave="${esc(chave(n))}" data-dica="${esc(dica)}" aria-label="${esc(dica.replace(/\n/g, ', '))}"></button></div></div>`;
+    });
+    return `<div class="gantt-terminal"><span class="ponto ${classeT(t)}"></span>${esc(nomeTerminal(t))} <span class="suave" style="font:400 14px var(--fonte)">${linhas.length} ${linhas.length === 1 ? 'navio' : 'navios'}</span></div>${linhas.join('')}`;
+  });
+  $('#linha').innerHTML = `<div class="gantt"><div class="gantt-grade">${eixo}${blocos.join('')}</div></div>
+    <div class="legenda gantt-legenda">
+      <span><i style="background:color-mix(in srgb, var(--t-btp) 28%, var(--superficie));box-shadow:inset 0 0 0 1.5px var(--t-btp)"></i>Previsto, da chegada até a saída</span>
+      <span><i style="background:var(--t-btp)"></i>Atracado</span>
+      <span><i style="height:3px;background:var(--tinta-3)"></i>Janela do gate dry</span>
+      <span><i style="width:2px;height:11px;background:var(--critico)"></i>Deadline</span>
+      <span><i style="width:2px;height:12px;background:var(--sinal)"></i>Agora</span>
+      <span class="fraco">O DSS não informa o berço: cada linha é um navio, na cor do terminal.</span>
+    </div>`;
+}
+
+// ============================================================ mudanças
+const GRUPOS_CAMPO = {
+  deadline: (c) => c === 'data_deadline',
+  chegada: (c) => /chegada|atracacao/.test(c),
+  gate: (c) => /abertura_gate/.test(c) || c === 'data_lib_reefer' || c === 'data_prev_lib_reefer',
+  saida: (c) => c === 'data_prev_saida',
+  liberacao: (c) => /lib_/.test(c),
+  registro: (c) => c === 'registro',
+};
+const dssIso = (v) => (v ? new Date(`${String(v).replace(' ', 'T')}Z`).toISOString() : null);
+function difTexto(d) {
+  const a = Math.abs(d) / HORA;
+  const t = a < 1 ? `${Math.round(a * 60)} min` : a < 48 ? `${Math.round(a)} h` : `${(a / 24).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} dias`;
+  return `${d > 0 ? 'adiou' : 'antecipou'} ${t}`;
+}
+function textoDiferenca(m) {
+  const de = dssIso(m.de), para = dssIso(m.para);
+  if (!de || !para) return !de ? 'data informada' : 'data apagada';
+  const d = ms(para) - ms(de);
+  return d ? `<span class="selo ${d > 0 ? 's-atencao' : 's-info'}">${difTexto(d)}</span>` : '';
+}
+const NO_REGISTRO = { novo: 'entrou na lista do DSS', removido: 'saiu da lista do DSS', voltou: 'voltou à lista do DSS' };
+function textoMudanca(m) {
+  if (m.campo === 'registro') return `<span class="suave">${esc(NO_REGISTRO[m.para] || m.para)}</span>`;
+  if (m.campo === 'armador') return `Armador: <span class="de">${esc(m.de)}</span><span class="seta">para</span><strong>${esc(m.para)}</strong>`;
+  const de = dssIso(m.de), para = dssIso(m.para);
+  return `${esc(m.rotulo)}: ${de ? `<span class="de">${data(de)}</span>` : '<span class="fraco">sem data</span>'}<span class="seta">para</span><strong>${para ? data(para) : 'sem data'}</strong>${de && para ? ` ${textoDiferenca(m)}` : ''}`;
+}
+
+async function carregarMudancas() {
+  try {
+    mudancas = await api('/api/mudancas?horas=168&limite=5000');
+    mostrarMudancas();
+  } catch (e) {
+    $('#lista-mudancas').innerHTML = `<p class="vazio">Não foi possível carregar as mudanças: ${esc(e.message)}</p>`;
+  }
+}
+
+function mudancasFiltradas() {
+  const f = new FormData($('#filtros'));
+  const terminal = f.get('terminal'), navio = so(f.get('navio'));
+  const grupo = $('#m-campo').value;
+  const desde = Date.now() - Number($('#m-periodo').value) * HORA;
+  return mudancas.mudancas.filter((m) => ms(m.em) >= desde && (!terminal || m.terminal === terminal) && (!navio || so(m.navio).includes(navio)) && (grupo ? GRUPOS_CAMPO[grupo](m.campo) : m.campo !== 'registro'));
+}
+
+function mostrarMudancas() {
+  if (!mudancas) return;
+  const lista = mudancasFiltradas();
+  // gráfico: últimos 7 dias, uma série
+  const hoje = meiaNoiteSP(Date.now());
+  const grupo = $('#m-campo').value;
+  const todas = mudancas.mudancas.filter((m) => {
+    const f = new FormData($('#filtros'));
+    return (!f.get('terminal') || m.terminal === f.get('terminal')) && (!f.get('navio') || so(m.navio).includes(so(f.get('navio')))) && (grupo ? GRUPOS_CAMPO[grupo](m.campo) : m.campo !== 'registro');
+  });
+  const colunas = Array.from({ length: 7 }, (_, k) => {
+    const i = 6 - k, ini = hoje - i * DIA, fim = ini + DIA;
+    const doDia = todas.filter((m) => ms(m.em) >= ini && ms(m.em) < fim);
+    const porCampo = {};
+    for (const m of doDia) porCampo[m.rotulo] = (porCampo[m.rotulo] || 0) + 1;
+    const top = Object.entries(porCampo).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([c, v]) => `${c}: ${v}`);
+    return { rotulo: i === 0 ? 'hoje' : semana(ini + 12 * HORA), sub: fDiaMes.format(new Date(ini + 12 * HORA)), destaque: i === 0, segmentos: [{ classe: 'serie-unica', valor: doDia.length }], dica: `${nomeDia(ini + 12 * HORA)}\n${doDia.length} ${doDia.length === 1 ? 'mudança' : 'mudanças'}${top.length ? `\n${top.join('\n')}` : ''}` };
+  });
+  $('#graf-mudancas').innerHTML = graficoColunas(colunas, { altura: 170 }) + (mudancas.historico === 'memoria' ? '<p class="fraco" style="margin-top:10px;font-size:13px">O histórico está em memória: recomeça quando o servidor reinicia. Configure DATABASE_URL para guardar de vez.</p>' : '');
+
+  if (!lista.length) { $('#lista-mudancas').innerHTML = '<p class="vazio">Nenhuma mudança nesse período com esses filtros.</p>'; return; }
+  let html = `<h2 style="margin-bottom:6px">${lista.length} ${lista.length === 1 ? 'mudança' : 'mudanças'}</h2>`;
+  let diaAtual = null;
+  for (const m of lista.slice(0, 400)) {
+    const d = meiaNoiteSP(ms(m.em));
+    if (d !== diaAtual) {
+      if (diaAtual !== null) html += '</ul>';
+      html += `<h3 class="agenda-dia">${esc(nomeDia(ms(m.em)))}</h3><ul class="lista">`;
+      diaAtual = d;
+    }
+    html += `<li class="mudanca"><span class="hora">${hora(m.em)}</span><span>${botaoNavio(m)} <span class="fraco">${esc(m.viagem)}</span> ${terminalTag(m.terminal)}<br>${textoMudanca(m)}</span></li>`;
+  }
+  html += '</ul>';
+  if (lista.length > 400) html += '<p class="suave" style="margin-top:8px">Mostrando as 400 mais recentes. Use os filtros para ver as outras.</p>';
+  $('#lista-mudancas').innerHTML = html;
+}
+
+// ============================================================ qualidade
+async function carregarQualidade() {
+  try {
+    qualidade = await api('/api/qualidade');
+    mostrarQualidade();
+  } catch (e) {
+    $('#qualidade').innerHTML = `<p class="vazio">Não foi possível calcular a qualidade: ${esc(e.message)}</p>`;
+  }
+}
+function mostrarQualidade() {
+  const { terminais, texto, historico } = qualidade;
+  if (!terminais.length) { $('#qualidade').innerHTML = '<p class="vazio">O DSS não enviou registros.</p>'; return; }
+  const nivel = (p) => (p >= 90 ? 'm-ok' : p >= 50 ? 'm-atencao' : 'm-critico');
+  const medidor = (x) => (x.pct === null
+    ? '<span class="fraco" data-dica="Nenhum registro em que essa data já deveria existir" tabindex="0">sem base</span>'
+    : `<span class="medidor"><span class="medidor-trilho" aria-hidden="true"><span class="${nivel(x.pct)}" style="width:${Math.max(x.pct, 2)}%"></span></span><span class="num"><strong>${x.pct}%</strong> <span class="suave">${x.preenchidos} de ${x.total}</span></span></span>`);
+  const rotuloGeral = (p) => ({ data_lib_reefer: 'Liberação reefer¹', data_prev_lib_reefer: 'Liberação reefer prevista¹' }[p.campo] || esc(p.rotulo));
+  const linha = (rotulo, cel) => `<tr><th scope="row" style="font-weight:500">${rotulo}</th>${terminais.map((t) => `<td>${cel(t)}</td>`).join('')}</tr>`;
+  const grupo = (titulo) => `<tr><td class="grupo" colspan="${terminais.length + 1}">${titulo}</td></tr>`;
+  const NIVEL = { alto: ['Alto', 's-critico'], medio: ['Médio', 's-atencao'], baixo: ['Baixo', 's-neutro'] };
+  $('#qualidade').innerHTML = `<div class="tabela-rolagem" style="max-height:none"><table class="q-tabela"><thead><tr><th scope="col"></th>${terminais.map((t) => `<th scope="col">${terminalTag(t.terminal)}<div class="sub" style="font-weight:400">${t.registros} registros</div></th>`).join('')}</tr></thead><tbody>
+      ${grupo('Datas previstas que vêm preenchidas')}
+      ${terminais[0].previstas.map((p, i) => linha(rotuloGeral(p), (t) => medidor(t.previstas[i]))).join('')}
       ${grupo('Datas reais informadas quando já deveriam existir')}
-      ${terminais[0].reais.map((p, i) => linha(rotuloGeral(p), (t) => pctCel(t.reais[i]))).join('')}
+      ${terminais[0].reais.map((p, i) => linha(rotuloGeral(p), (t) => medidor(t.reais[i]))).join('')}
       ${grupo('Outros')}
-      ${linha('Armador válido', (t) => pctCel({ ...t.armador, preenchidos: t.armador.corretos }))}
-      ${linha('Datas que mudaram (7 dias)', (t) => `${t.mudancas.datas} <span class="suave">em ${t.mudancas.navios} navio(s)</span>`)}
-    </tbody></table></div><p class="suave"><sup>1</sup> Na BTP e na Santos Brasil, o DSS usa os campos de liberação reefer para a abertura do gate reefer.</p>`;
-    const NIVEL = { alto: ['alto', 'vermelho'], medio: ['médio', 'amarelo'], baixo: ['baixo', 'cinza'] };
-    const achados = `<div class="colunas" style="margin-top:14px">${terminais.map((t) => `<div><h2>${esc(t.nome)}</h2>${t.achados.length ? `<ul class="achados">${t.achados.map((a) => `<li><span class="pill ${NIVEL[a.nivel][1]}">${NIVEL[a.nivel][0]}</span> ${esc(a.texto)}</li>`).join('')}</ul>` : '<p class="suave">Nenhum problema encontrado.</p>'}</div>`).join('')}</div>`;
-    const resumo = texto ? `<details style="margin-top:12px"><summary>Texto para enviar ao DSS ou aos terminais</summary><textarea readonly id="texto-qualidade">${esc(texto)}</textarea><button class="leve" type="button" id="copiar-qualidade">Copiar</button></details>` : '';
-    $('#qualidade').innerHTML = tabela + achados + resumo + (historico === 'memoria' ? '<p class="suave">As mudanças contam só desde o último reinício do servidor (histórico em memória).</p>' : '');
-  }
+      ${linha('Armador válido', (t) => medidor({ ...t.armador, preenchidos: t.armador.corretos }))}
+      ${linha('Datas que mudaram em 7 dias', (t) => `<span class="num"><strong>${t.mudancas.datas}</strong> <span class="suave">em ${t.mudancas.navios} ${t.mudancas.navios === 1 ? 'navio' : 'navios'}</span></span>`)}
+    </tbody></table></div>
+    <p class="fraco" style="margin-top:8px;font-size:13px">¹ Na BTP e na Santos Brasil, o DSS usa os campos de liberação reefer para a abertura do gate reefer.${historico === 'memoria' ? ' As mudanças contam só desde o último reinício do servidor.' : ''}</p>
+    <div class="colunas-q">${terminais.map((t) => `<div><h3>${terminalTag(t.terminal)}</h3>${t.achados.length ? `<ul class="achados">${t.achados.map((a) => `<li><span class="selo ${NIVEL[a.nivel][1]}">${NIVEL[a.nivel][0]}</span><span>${esc(a.texto)}</span></li>`).join('')}</ul>` : '<p class="suave" style="margin-top:6px">Nenhum problema encontrado.</p>'}</div>`).join('')}</div>
+    ${texto ? `<details style="margin-top:18px"><summary>Texto pronto para enviar ao DSS ou aos terminais</summary><textarea readonly id="texto-qualidade">${esc(texto)}</textarea><button class="botao leve" type="button" id="copiar-qualidade" style="margin-top:8px">Copiar texto</button></details>` : ''}`;
+}
 
-  $('#filtros').addEventListener('submit', (ev) => { ev.preventDefault(); carregar(); });
-  $('#limpar').addEventListener('click', () => { $('#filtros').reset(); carregar(); });
-  // Clicar num cartão mantém o período e a opção de encerrados, e troca só o filtro do cartão.
-  function aplicarCartao(campo, valor) {
-    for (const nome of ['terminal', 'armador', 'situacao', 'gate', 'navio']) $(`#filtros [name=${nome}]`).value = '';
-    if (campo) $(`#filtros [name=${campo}]`).value = valor;
-    if (campo === 'situacao' && valor === 'encerrado') $('#filtros [name=encerrados]').checked = true;
-    carregar();
+// ============================================================ detalhe do navio
+const EVENTOS_DETALHE = [
+  ['chegada', 'Chegada', 'prevChegada', null],
+  ['atracacao', 'Atracação', 'prevAtracacao', 'atracacao'],
+  ['gate', 'Abertura do gate dry', 'prevAberturaGate', 'aberturaGate'],
+  ['gateReefer', 'Abertura do gate reefer', 'prevAberturaGateReefer', 'aberturaGateReefer'],
+  ['deadline', 'Deadline', 'deadline', null],
+  ['dry', 'Liberação dry', 'prevLiberacaoDry', 'liberacaoDry'],
+  ['reefer', 'Liberação reefer', 'prevLiberacaoReefer', 'liberacaoReefer'],
+  ['saida', 'Saída', 'prevSaida', null],
+];
+const EVENTO_DO_CAMPO = {
+  data_prev_chegada: 'chegada', data_prev_atracacao: 'atracacao', data_atracacao: 'atracacao', data_prev_saida: 'saida',
+  data_prev_abertura_gate: 'gate', data_abertura_gate: 'gate', data_deadline: 'deadline', data_prev_lib_dry: 'dry', data_lib_dry: 'dry',
+};
+const eventoDe = (m) => EVENTO_DO_CAMPO[m.campo] || (/reefer/.test(m.campo) ? (/gate/i.test(m.rotulo) ? 'gateReefer' : 'reefer') : null);
+
+async function abrirDetalhe(ch) {
+  const dlg = $('#detalhe');
+  $('#detalhe-titulo').innerHTML = `<h2 id="detalhe-nome">${esc(ch.split('|')[1])}</h2>`;
+  $('#detalhe-corpo').innerHTML = '<p class="suave">Carregando…</p>';
+  esconderDica();
+  if (!dlg.open) dlg.showModal();
+  try {
+    mostrarDetalhe(await api(`/api/navio?chave=${encodeURIComponent(ch)}`));
+  } catch (e) {
+    $('#detalhe-corpo').innerHTML = `<p class="vazio">${esc(e.message)}</p>`;
   }
-  $('#atualizar').addEventListener('click', () => carregar(true));
-  $('#cartoes').addEventListener('click', (ev) => {
-    const b = ev.target.closest('button');
-    if (!b) return;
-    aplicarCartao(b.dataset.campo, b.dataset.valor);
-  });
-  let ultimasMudancas = [[], null];
-  document.addEventListener('click', (ev) => {
-    const b = ev.target.closest('button[data-chave]');
-    if (b) return abrirDetalhe(b.dataset.chave);
-    if (ev.target.id === 'copiar-qualidade') {
-      const t = $('#texto-qualidade');
-      (navigator.clipboard?.writeText(t.value) || Promise.reject()).then(() => (ev.target.textContent = 'Copiado'), () => { t.select(); document.execCommand('copy'); ev.target.textContent = 'Copiado'; });
-      return;
+}
+
+function mostrarDetalhe(d) {
+  const n = d.navio;
+  const ref = n || d.mudancas[0];
+  $('#detalhe-titulo').innerHTML = `<h2 id="detalhe-nome">${esc(ref.navio)}</h2>
+    <p class="linha-meta" style="margin-top:4px">${terminalTag(ref.terminal)}<span>viagem ${esc(ref.viagem)}</span>${n ? `<span>armador ${esc(n.armador)}</span>` : ''}</p>
+    ${n ? `<p style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${selo(n.situacao.navio)}${selo(n.situacao.gate, `gate dry ${(SITUACAO[n.situacao.gate] || [n.situacao.gate])[0].toLowerCase()}`)}${ajustes(n)}</p>` : ''}`;
+  let html = '';
+  if (n) {
+    const porEvento = {};
+    for (const m of d.mudancas) { const e = eventoDe(m); if (e) porEvento[e] = (porEvento[e] || 0) + 1; }
+    const agora = Date.now();
+    const itens = EVENTOS_DETALHE.map(([id, rotulo, p, r]) => ({ id, rotulo, prev: n.datas[p], real: r ? n.datas[r] : null })).map((i) => ({ ...i, quando: i.real || i.prev }));
+    const comData = itens.filter((i) => i.quando).sort((a, b) => a.quando.localeCompare(b.quando));
+    const semData = itens.filter((i) => !i.quando);
+    const linhas = [];
+    let marcou = false;
+    const marcaAgora = () => `<li class="agora"><span class="p"></span><span class="quando">${data(new Date().toISOString())}</span><span>agora</span></li>`;
+    for (const i of comData) {
+      const passou = ms(i.quando) <= agora;
+      if (!passou && !marcou) { linhas.push(marcaAgora()); marcou = true; }
+      const estado = i.real ? `${selo('liberado', 'realizado')}${i.prev && i.prev !== i.real ? ` <span class="suave">previsto ${data(i.prev)}</span>` : ''}` : `<span class="suave">${passou ? 'previsto, já passou' : 'previsto'}</span>`;
+      const mudou = porEvento[i.id] ? ` <span class="selo s-atencao">mudou ${porEvento[i.id]}×</span>` : '';
+      linhas.push(`<li class="${passou ? 'passou' : ''}"><span class="p"></span><span class="quando">${data(i.quando)}</span><span><strong>${i.rotulo}</strong> ${estado}${mudou}</span></li>`);
     }
-    if (ev.target.id === 'todas-mudancas') { mostrarTodasMudancas = !mostrarTodasMudancas; mostrarMudancas(...ultimasMudancas); }
-  });
-  $('#fechar').addEventListener('click', () => $('#detalhe').close());
-  $('#detalhe').addEventListener('click', (ev) => { if (ev.target === $('#detalhe')) $('#detalhe').close(); });
+    if (!marcou) linhas.push(marcaAgora());
+    html += `<h3>Sequência de datas</h3><ul class="sequencia">${linhas.join('')}</ul>`;
+    if (semData.length) html += `<p class="suave" style="margin:-8px 0 18px">O DSS não informa: ${semData.map((i) => i.rotulo.toLowerCase()).join(', ')}.</p>`;
+  } else {
+    html += '<p class="suave" style="margin-bottom:16px">Este navio não está mais na lista atual do DSS. Abaixo, o que ficou registrado no histórico.</p>';
+  }
+  html += '<h3>Histórico de mudanças</h3>';
+  html += d.mudancas.length
+    ? `<ul class="lista">${d.mudancas.map((m) => `<li class="mudanca"><span class="hora">${hora(m.em)}</span><span><span class="fraco">${fDiaMes.format(new Date(m.em))}</span> ${textoMudanca(m)}</span></li>`).join('')}</ul>`
+    : '<p class="suave">Nenhuma mudança registrada para este navio.</p>';
+  if (d.historico === 'memoria') html += '<p class="fraco" style="margin-top:10px;font-size:13px">O histórico recomeça quando o servidor reinicia (sem banco de dados).</p>';
+  $('#detalhe-corpo').innerHTML = html;
+}
+
+// ============================================================ dica (tooltip)
+const dica = $('#dica');
+let alvoDica = null;
+function mostrarDica(el, x, y) {
+  alvoDica = el;
+  dica.textContent = el.dataset.dica;
+  dica.hidden = false;
+  const r = dica.getBoundingClientRect();
+  if (x === undefined) { const b = el.getBoundingClientRect(); x = b.left + b.width / 2; y = b.top; }
+  let left = x + 14, top = y - r.height - 12;
+  if (left + r.width > innerWidth - 8) left = x - r.width - 14;
+  if (top < 8) top = y + 18;
+  dica.style.left = `${Math.max(8, left)}px`;
+  dica.style.top = `${top}px`;
+}
+function esconderDica() { dica.hidden = true; alvoDica = null; }
+document.addEventListener('pointermove', (ev) => {
+  const el = ev.target.closest?.('[data-dica]');
+  if (el && el.dataset.dica) mostrarDica(el, ev.clientX, ev.clientY);
+  else if (alvoDica) esconderDica();
+});
+document.addEventListener('focusin', (ev) => { const el = ev.target.closest?.('[data-dica]'); if (el && el.dataset.dica) mostrarDica(el); });
+document.addEventListener('focusout', esconderDica);
+addEventListener('scroll', esconderDica, { passive: true });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') esconderDica(); });
+
+// ============================================================ abas
+const ABAS = ['visao', 'navios', 'mudancas', 'qualidade'];
+const abaAtual = () => (ABAS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'visao');
+function mostrarAba() {
+  const aba = abaAtual();
+  for (const a of ABAS) $(`#aba-${a}`).hidden = a !== aba;
+  for (const l of document.querySelectorAll('.abas-principais a')) {
+    if (l.getAttribute('href') === `#${aba}`) l.setAttribute('aria-current', 'page');
+    else l.removeAttribute('aria-current');
+  }
+  if (aba === 'mudancas' && !mudancas) carregarMudancas();
+  if (aba === 'qualidade' && !qualidade) carregarQualidade();
+  esconderDica();
+}
+addEventListener('hashchange', () => { mostrarAba(); scrollTo({ top: 0 }); });
+
+/** Indicadores e links "ver todos" levam à aba Navios já filtrada. */
+function aplicarAcao(acao) {
+  const [tipo, valor] = acao.split(':');
+  $('#f-situacao').value = tipo === 'situacao' ? valor : '';
+  $('#f-gate').value = tipo === 'gate' ? valor : '';
+  especial = tipo === 'especial' ? valor : null;
+  location.hash = '#navios';
+  mostrarNavios();
+}
+
+// ============================================================ eventos
+let espera = null;
+$('#filtros').addEventListener('input', (ev) => {
+  if (ev.target.name === 'navio') { clearTimeout(espera); espera = setTimeout(aoMudarFiltros, 300); }
+});
+$('#filtros').addEventListener('change', (ev) => { if (ev.target.name !== 'navio') aoMudarFiltros(); });
+$('#filtros').addEventListener('submit', (ev) => { ev.preventDefault(); aoMudarFiltros(); });
+function aoMudarFiltros() {
+  const f = new FormData($('#filtros'));
+  guardar('filtros', { terminal: f.get('terminal'), dias: f.get('dias') });
   carregar();
-  carregarQualidade();
-  setInterval(() => { carregar(); carregarQualidade(); }, 5 * 60 * 1000);
+  if (mudancas) mostrarMudancas();
+}
+$('#limpar').addEventListener('click', () => {
+  $('#filtros').reset();
+  for (const id of ['#f-situacao', '#f-gate']) $(id).value = '';
+  $('#f-encerrados').checked = false;
+  especial = null;
+  aoMudarFiltros();
+});
+$('#atualizar').addEventListener('click', () => carregar(true));
+for (const id of ['#f-situacao', '#f-gate', '#f-ordenar', '#f-encerrados']) $(id).addEventListener('change', () => mostrarNavios());
+for (const id of ['#m-periodo', '#m-campo']) $(id).addEventListener('change', () => mostrarMudancas());
+$('#metrica').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (!b) return; metrica = b.dataset.metrica; guardar('metrica', metrica); mostrarPorDia(); });
+$('#vista').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (!b) return; vista = b.dataset.vista; guardar('vista', vista); mostrarNavios(); });
+document.addEventListener('click', (ev) => {
+  const navio = ev.target.closest('[data-chave]');
+  if (navio) return abrirDetalhe(navio.dataset.chave);
+  const acao = ev.target.closest('[data-acao]');
+  if (acao) {
+    ev.preventDefault();
+    if (acao.dataset.acao === 'todos') { aplicarAcao('nada:'); return; }
+    return aplicarAcao(acao.dataset.acao);
+  }
+  if (ev.target.id === 'tirar-especial') { especial = null; mostrarNavios(); return; }
+  if (ev.target.id === 'agenda-mais') { agendaCompleta = !agendaCompleta; mostrarAgenda(); return; }
+  if (ev.target.id === 'copiar-qualidade') {
+    const t = $('#texto-qualidade');
+    (navigator.clipboard?.writeText(t.value) || Promise.reject()).then(() => (ev.target.textContent = 'Copiado'), () => { t.select(); document.execCommand('copy'); ev.target.textContent = 'Copiado'; });
+  }
+});
+$('#fechar').addEventListener('click', () => $('#detalhe').close());
+$('#detalhe').addEventListener('click', (ev) => { if (ev.target === $('#detalhe')) $('#detalhe').close(); });
+
+// ============================================================ início
+(() => {
+  const f = lembrar('filtros', null);
+  if (f) {
+    const radio = document.querySelector(`#f-terminal input[value="${CSS.escape(f.terminal || '')}"]`);
+    if (radio) radio.checked = true;
+    if (f.dias !== undefined && [...$('#filtros [name=dias]').options].some((o) => o.value === f.dias)) $('#filtros [name=dias]').value = f.dias;
+  }
+})();
+mostrarAba();
+carregar();
+setInterval(() => carregar(), 2 * 60 * 1000);
+setInterval(() => { if (dados && abaAtual() === 'visao' && !document.hidden) { mostrarProximo(); mostrarFaixa(); } }, 30 * 1000);
 </script>
 </body>
 </html>
