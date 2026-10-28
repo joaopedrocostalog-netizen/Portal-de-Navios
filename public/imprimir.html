@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agenda do dia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* Folha sempre clara: é para papel ou PDF. */
+    :root { color-scheme: light; --tinta: #15222f; --tinta-2: #4b5a6a; --linha: #cfd6de; --fundo: #ffffff; --barra: #eef1f4; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--barra); color: var(--tinta); font: 13px/1.4 "Barlow", system-ui, sans-serif; }
+    .controles { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; max-width: 1050px; margin: 0 auto; padding: 16px; }
+    .controles label { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--tinta-2); }
+    .controles select, .controles button { font: inherit; font-size: 14px; min-height: 36px; padding: 6px 10px; border: 1px solid #b9c3ce; border-radius: 6px; background: #fff; }
+    .controles .marcar { flex-direction: row; align-items: center; gap: 6px; min-height: 36px; color: var(--tinta); }
+    .controles button { background: #12304d; color: #fff; border-color: #12304d; cursor: pointer; font-weight: 500; }
+    .controles a { color: #1b5fa8; font-size: 14px; padding: 8px 0; }
+    .folha { background: var(--fundo); max-width: 1050px; margin: 0 auto 32px; padding: 28px 32px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
+    h1 { margin: 0; font: 600 28px/1.1 "Barlow Condensed", "Barlow", sans-serif; }
+    h2 { margin: 22px 0 6px; font: 600 18px/1.2 "Barlow Condensed", "Barlow", sans-serif; }
+    .meta { color: var(--tinta-2); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 2px 18px; }
+    .resumo { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 22px; }
+    .resumo strong { font: 600 20px/1 "Barlow Condensed", "Barlow", sans-serif; margin-right: 4px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+    th { font-weight: 600; font-size: 12px; color: var(--tinta-2); border-bottom: 1.5px solid var(--tinta); }
+    td.hora { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    td.check { width: 28px; }
+    td.check span { display: inline-block; width: 14px; height: 14px; border: 1.5px solid var(--tinta-2); border-radius: 2px; }
+    .obs { color: var(--tinta-2); font-size: 12px; }
+    .vazio { color: var(--tinta-2); padding: 8px 0; }
+    .rodape { margin-top: 18px; color: var(--tinta-2); font-size: 11px; }
+    tr { break-inside: avoid; }
+    @page { size: A4 landscape; margin: 12mm; }
+    @media print {
+      body { background: #fff; font-size: 11px; }
+      .controles { display: none; }
+      .folha { box-shadow: none; padding: 0; max-width: none; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="controles">
+  <label>Dia<select id="dia"><option value="0">Hoje</option><option value="1">Amanhã</option><option value="2">Depois de amanhã</option></select></label>
+  <label>Terminal<select id="terminal"><option value="">Todos</option><option value="btp">BTP</option><option value="santos_brasil">Santos Brasil</option><option value="embraport">Embraport</option></select></label>
+  <label class="marcar"><input type="checkbox" id="com-obs" checked> Incluir observações da equipe</label>
+  <button type="button" id="imprimir">Imprimir ou salvar em PDF</button>
+  <a href="/">Voltar ao portal</a>
+</div>
+<div class="folha" id="folha"><p class="vazio">Carregando…</p></div>
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? '—').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const HORA = 36e5, DIA = 864e5, TZ = 'America/Sao_Paulo';
+const fHora = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+const fDia = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+const fCurto = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const partes = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+const meiaNoite = (t) => { const [y, m, d] = partes.format(new Date(t)).split('-').map(Number); return Date.UTC(y, m - 1, d, 3); };
+const ms = (iso) => (iso ? Date.parse(iso) : NaN);
+const TERM = { btp: 'BTP', santos_brasil: 'Santos Brasil', embraport: 'Embraport' };
+const TIPO = { deadline: 'Deadline', gate: 'Abertura de gate', chegada: 'Chegada', atracacao: 'Atracação', liberacao: 'Liberação', saida: 'Saída' };
+const params = new URLSearchParams(location.search);
+if (params.get('dia')) $('#dia').value = params.get('dia');
+if (params.get('terminal')) $('#terminal').value = params.get('terminal');
+
+let painel = null, observacoes = [];
+
+async function carregar() {
+  const q = new URLSearchParams({ encerrados: 'true', dias: '7' });
+  if ($('#terminal').value) q.set('terminal', $('#terminal').value);
+  const [p, o] = await Promise.all([fetch(`/api/painel?${q}`).then((r) => r.json()), fetch('/api/observacoes').then((r) => r.json()).catch(() => ({ observacoes: [] }))]);
+  if (p.erro) throw new Error(p.erro);
+  painel = p;
+  observacoes = o.observacoes || [];
+  desenhar();
+}
+
+function eventosDoDia(ini, fim) {
+  const lista = [];
+  const dentro = (iso) => iso && ms(iso) >= ini && ms(iso) < fim;
+  for (const n of painel.navios) {
+    const d = n.datas;
+    if (dentro(d.deadline)) lista.push({ tipo: 'deadline', em: d.deadline, n });
+    if (dentro(d.aberturaGate || d.prevAberturaGate)) lista.push({ tipo: 'gate', em: d.aberturaGate || d.prevAberturaGate, n, extra: `dry${d.aberturaGate ? ', confirmada' : ''}` });
+    if (dentro(d.aberturaGateReefer || d.prevAberturaGateReefer)) lista.push({ tipo: 'gate', em: d.aberturaGateReefer || d.prevAberturaGateReefer, n, extra: `reefer${d.aberturaGateReefer ? ', confirmada' : ''}` });
+    if (dentro(d.prevChegada)) lista.push({ tipo: 'chegada', em: d.prevChegada, n });
+    if (dentro(d.atracacao || d.prevAtracacao)) lista.push({ tipo: 'atracacao', em: d.atracacao || d.prevAtracacao, n, extra: d.atracacao ? 'confirmada' : 'prevista' });
+    if (dentro(d.liberacaoDry || d.prevLiberacaoDry)) lista.push({ tipo: 'liberacao', em: d.liberacaoDry || d.prevLiberacaoDry, n, extra: 'dry' });
+    if (dentro(d.liberacaoReefer || d.prevLiberacaoReefer)) lista.push({ tipo: 'liberacao', em: d.liberacaoReefer || d.prevLiberacaoReefer, n, extra: 'reefer' });
+    if (dentro(d.prevSaida)) lista.push({ tipo: 'saida', em: d.prevSaida, n });
+  }
+  return lista.sort((a, b) => ms(a.em) - ms(b.em) || a.n.navio.localeCompare(b.n.navio));
+}
+
+function desenhar() {
+  const ini = meiaNoite(Date.now()) + Number($('#dia').value) * DIA;
+  const ev = eventosDoDia(ini, ini + DIA);
+  const comObs = $('#com-obs').checked;
+  const obsPor = {};
+  for (const o of observacoes) (obsPor[o.chave] ||= []).push(o);
+  const contar = (t) => ev.filter((e) => e.tipo === t).length;
+  const nomeDia = fDia.format(new Date(ini + 12 * HORA));
+  document.title = `Agenda de ${nomeDia}`;
+  const aguardando = painel.navios.filter((n) => n.situacao.navio === 'aguardando_atracacao').sort((a, b) => (b.horas.esperaAtracacao || 0) - (a.horas.esperaAtracacao || 0));
+  $('#folha').innerHTML = `
+    <h1>Agenda de ${esc(nomeDia)}</h1>
+    <div class="meta"><span>Terminal: ${esc($('#terminal').value ? TERM[$('#terminal').value] : 'todos')}</span><span>Impresso em ${fCurto.format(new Date())}</span><span>Dados do DSS de ${fCurto.format(new Date(painel.consultadoEm))}</span></div>
+    <div class="resumo">${Object.keys(TIPO).filter((t) => contar(t)).map((t) => `<span><strong>${contar(t)}</strong>${TIPO[t].toLowerCase()}${contar(t) > 1 && t !== 'atracacao' ? 's' : ''}</span>`).join('') || '<span>Nenhum evento previsto neste dia.</span>'}</div>
+    <h2>Eventos do dia</h2>
+    ${ev.length ? `<table><thead><tr><th>Hora</th><th>Evento</th><th>Navio</th><th>Viagem</th><th>Armador</th><th>Terminal</th>${comObs ? '<th>Observações da equipe</th>' : ''}<th>Feito</th></tr></thead><tbody>
+      ${ev.map((e) => `<tr><td class="hora">${fHora.format(new Date(e.em))}</td><td>${TIPO[e.tipo]}${e.extra ? ` <span class="obs">(${esc(e.extra)})</span>` : ''}</td><td><strong>${esc(e.n.navio)}</strong></td><td>${esc(e.n.viagem)}</td><td>${esc(e.n.armador)}</td><td>${esc(TERM[e.n.terminal] || e.n.terminal)}</td>${comObs ? `<td class="obs">${(obsPor[e.n.chave] || []).slice(0, 2).map((o) => `${esc(o.texto)} <i>(${esc(o.autor)})</i>`).join('<br>')}</td>` : ''}<td class="check"><span></span></td></tr>`).join('')}
+    </tbody></table>` : '<p class="vazio">Nenhum evento previsto neste dia.</p>'}
+    <h2>Aguardando atracação agora</h2>
+    ${aguardando.length ? `<table><thead><tr><th>Navio</th><th>Viagem</th><th>Terminal</th><th>Chegada prevista</th><th>Esperando há</th></tr></thead><tbody>${aguardando.map((n) => `<tr><td><strong>${esc(n.navio)}</strong></td><td>${esc(n.viagem)}</td><td>${esc(TERM[n.terminal] || n.terminal)}</td><td>${n.datas.prevChegada ? fCurto.format(new Date(n.datas.prevChegada)) : '—'}</td><td>${Math.round(n.horas.esperaAtracacao || 0)} h</td></tr>`).join('')}</tbody></table>` : '<p class="vazio">Nenhum navio aguardando atracação.</p>'}
+    <p class="rodape">Portal de Navios, com dados da API Portal de Navios do DSS. Horários de Brasília. Datas previstas podem mudar: confira o portal antes de agir.</p>`;
+}
+
+for (const id of ['#dia', '#com-obs']) $(id).addEventListener('change', desenhar);
+$('#terminal').addEventListener('change', () => carregar().catch(erro));
+$('#imprimir').addEventListener('click', () => print());
+function erro(e) { $('#folha').innerHTML = `<p class="vazio">Não foi possível carregar a agenda: ${esc(e.message)}</p>`; }
+carregar().catch(erro);
+</script>
+</body>
+</html>

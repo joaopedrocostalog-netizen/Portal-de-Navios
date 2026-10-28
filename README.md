@@ -56,6 +56,13 @@ Os códigos 400, 401, 403 e 500 chegam com a mensagem do DSS. Por exemplo, 403 s
 | `GET /api/navio?chave=btp\|MSCINSA\|NA642R` | Detalhe do navio: datas atuais e todas as mudanças registradas |
 | `GET /api/navios.xlsx` (+ filtros) | Excel da visão filtrada: aba "Navios" (todas as datas, situações e ajustes) e aba "Mudanças (7 dias)" |
 | `GET /api/qualidade` | Qualidade dos dados por terminal, com achados e texto pronto para enviar ao DSS |
+| `GET /api/viagens` | Viagens passadas (`navio`, `terminal`, `armador`, `de`, `ate`, `todas=true`) |
+| `GET /api/confiabilidade` | Quanto cada terminal ou armador muda as previsões (`campo`, `agrupar`, `dias`) |
+| `GET /api/calendario.ics` | Calendário para o Outlook (`tipos`, `chaves`, `lembrete` + filtros) |
+| `GET/POST/DELETE /api/observacoes` | Observações da equipe por navio (POST com JSON `{chave, texto, autor}`) |
+| `GET/POST/DELETE /api/armadores` | Tabela de armadores (POST com JSON `{tipo: "navio"\|"viagem", valor, armador, autor}`) |
+| `GET /api/etracking` | Situação da integração com o eTracking |
+| `GET /tv`, `GET /imprimir` | Modo TV e agenda para imprimir |
 | `GET /api/alertas` | Alertas por e-mail: regras, fila, último envio e último erro |
 | `GET /api/alertas/teste` | Envia um e-mail de teste para `ALERTA_PARA` (no máximo um a cada 10 min) |
 | `GET /api/dss/bruto` | Resposta original do DSS, sem tratamento (consulta na hora) |
@@ -97,6 +104,48 @@ Também ficam registrados os navios que entram na lista do DSS, saem dela ou vol
   - achados por gravidade e um texto pronto para copiar e mandar ao DSS ou aos terminais.
 
   Tudo isso é calculado sobre todos os registros, sem os filtros da tela.
+
+## Ferramentas da equipe
+
+- **Meus navios:** a estrela ao lado do nome marca o navio para acompanhar. Os marcados ficam fixos no topo da lista e num quadro da Visão geral, com destaque quando alguma data mudou desde a última vez que o navio foi aberto. Ficam guardados no navegador de cada pessoa.
+- **Observações por navio:** no detalhe do navio, a equipe escreve notas ("booking confirmado", "cliente avisado do atraso"). Ficam no banco (tabela `navios_observacoes`), aparecem como "N obs." na tabela, no Excel e na agenda impressa.
+- **Viagens passadas:** a aba lista os navios encerrados ou que saíram da lista do DSS, com atracação real, última saída prevista, quando saíram da lista e quantas datas mudaram. O DSS não informa a saída real. O banco guarda as viagens desde 27/10/2026 (`navios_estado`, com `primeiro_em` e `removido_em`).
+- **Confiabilidade das previsões** (aba Mudanças, e `GET /api/confiabilidade?campo=data_prev_chegada&agrupar=terminal&dias=30`): para cada navio, quanto a chegada, o deadline ou a saída andou da primeira à última versão no período. A barra mostra a média entre os navios em que a data mudou, por terminal ou por armador, junto com quantos mudaram. Fica mais confiável com algumas semanas de histórico.
+- **Deadlines no Outlook:** o botão "Adicionar ao Outlook" gera um link de calendário (`/api/calendario.ics`) com deadlines e aberturas de gate (e, se quiser, chegadas e atracações), dos filtros atuais, só dos meus navios ou de todos, com lembrete antes do deadline. No Outlook: Calendário > Adicionar calendário > Assinar da Web. O Outlook atualiza sozinho.
+- **Modo TV** (`/tv`, aceita `?terminal=btp`): tela cheia escura com relógio, próximos deadlines em contagem regressiva, chegadas de hoje e amanhã, gates abrindo e navios aguardando atracação. Atualiza a cada minuto e recarrega uma vez por dia.
+- **Agenda para imprimir** (`/imprimir?dia=0|1|2&terminal=`): a agenda do dia em A4 paisagem, com observações da equipe e uma coluna para marcar o que foi feito. "Imprimir ou salvar em PDF" usa a impressão do navegador.
+- **Tabela de armadores** (aba Qualidade dos dados): para os navios em que o DSS não traz armador válido, cadastre "este navio" (vale para todas as viagens, inclusive futuras) ou "só esta viagem". A viagem tem prioridade sobre o navio, e o armador do DSS, quando vier certo, sempre vence. Fica no banco (`armadores_mapa`).
+
+Observações e tabela de armadores são gravadas por qualquer pessoa com o link do portal. Antes de divulgar o endereço, vale colocar um login.
+
+## eTracking (pronto para ligar)
+
+A integração já está no código e fica desligada até existir `ETRACKING_URL`. Ligada, o portal busca os contêineres no eTracking a cada `ETRACKING_MINUTOS` (10), encontra o navio de cada um pelo nome do navio + viagem (ou só pela viagem, quando ela é única) e mostra:
+- a coluna "Contêineres" na tabela (total e quantos estão fora do terminal);
+- no próximo deadline, quantos contêineres da Costalog ainda estão fora do terminal;
+- no detalhe do navio, a lista de contêineres com booking, cliente, tipo, situação e entrada no terminal.
+
+`GET /api/etracking` mostra se está configurado, quando consultou, o último erro e os contêineres que não acharam navio (útil para acertar os nomes).
+
+| Variável | Para quê |
+|---|---|
+| `ETRACKING_URL` | Endereço que devolve os contêineres em JSON. Sem ela, a integração fica desligada |
+| `ETRACKING_METODO`, `ETRACKING_CORPO` | `GET` (padrão) ou `POST` com o corpo JSON |
+| `ETRACKING_TOKEN`, `ETRACKING_CABECALHO` | Token. Vai em `Authorization: Bearer ...`; outro cabeçalho, como `x-api-key`, em `ETRACKING_CABECALHO` |
+| `ETRACKING_USUARIO`, `ETRACKING_SENHA` | Login Basic, se for o caso |
+| `ETRACKING_LISTA` | Caminho até a lista na resposta, como `dados.conteineres`. Vazio = a primeira lista encontrada |
+| `ETRACKING_CAMPOS` | JSON com o nome de cada campo na resposta: `conteiner`, `navio`, `viagem`, `booking`, `cliente`, `situacao`, `entrada`, `tipo`, `terminal`. Campos com nomes comuns (`container`, `nr_viagem`, `voyage`...) são achados sozinhos |
+| `ETRACKING_ENTREGUE` | Expressão que, na situação, indica contêiner já no terminal (padrão `gate.?in\|entregue\|no terminal\|embarcado`). Uma data em `entrada` também conta |
+| `ETRACKING_MINUTOS` | Intervalo entre consultas (10) |
+
+Exemplo:
+
+```
+ETRACKING_URL=https://etracking.exemplo.com.br/api/conteineres
+ETRACKING_TOKEN=...
+ETRACKING_LISTA=dados
+ETRACKING_CAMPOS={"conteiner":"nr_container","navio":"nm_navio","viagem":"nr_viagem","booking":"nr_booking","cliente":"nm_cliente","situacao":"ds_status","entrada":"dt_gate_in","tipo":"tp_container"}
+```
 
 ## Alertas por e-mail
 
@@ -173,8 +222,14 @@ src/dss.js         cliente da API do DSS, normalização, situações, filtros e
 src/historico.js   histórico de mudanças (PostgreSQL ou memória)
 src/alertas.js     alertas por e-mail (regras, fila, Resend/Brevo)
 src/qualidade.js   qualidade dos dados por terminal
+src/armazem.js     observações e tabela de armadores (PostgreSQL ou memória)
+src/confiabilidade.js  quanto cada terminal/armador muda as previsões
+src/ics.js         calendário .ics para o Outlook
+src/etracking.js   integração com o eTracking (desligada até ter ETRACKING_URL)
 src/xlsx.js        gerador de .xlsx sem dependências
 src/server.js      rotas HTTP e página
-public/index.html  painel e detalhe do navio
+public/index.html  painel, detalhe do navio e ferramentas da equipe
+public/tv.html     modo TV
+public/imprimir.html  agenda do dia para imprimir ou salvar em PDF
 test/              testes com o DSS simulado (PG_TESTE_URL=... testa também com PostgreSQL)
 ```

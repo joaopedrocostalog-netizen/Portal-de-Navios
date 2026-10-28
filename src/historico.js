@@ -67,6 +67,7 @@ function filtrarMudancas(lista, { desde, chave, terminal, navio, campo, limite =
 /** Base comum: estado anterior e mudanças recentes em memória. `persistir` grava no banco (opcional). */
 function criarBase({ tipo, diasEmMemoria = 7, carregar = async () => ({ estado: new Map(), recentes: [] }), persistir = async () => {}, buscar = null }) {
   let estado = new Map();
+  let marcas = new Map(); // chave -> { primeiroEm, vistoEm, removidoEm }: quando o navio apareceu e saiu da lista
   let recentes = [];
   let primeiraConsulta = true;
   let fila = Promise.resolve();
@@ -76,8 +77,16 @@ function criarBase({ tipo, diasEmMemoria = 7, carregar = async () => ({ estado: 
     async iniciar() {
       const r = await carregar(diasEmMemoria);
       estado = r.estado;
+      marcas = r.marcas || new Map();
       recentes = r.recentes;
       primeiraConsulta = estado.size === 0;
+    },
+    /** Todas as viagens já vistas (inclusive as que saíram da lista do DSS), com o último registro bruto. */
+    viagens() {
+      return [...estado].map(([chave, r]) => {
+        const { __removido, ...bruto } = r;
+        return { chave, bruto, removido: Boolean(__removido), ...(marcas.get(chave) || {}) };
+      });
     },
     /** Registra uma consulta. Na primeira de todas (sem estado anterior) só guarda a base, sem gerar mudanças. */
     registrar(registros, emMs = Date.now()) {
@@ -89,8 +98,16 @@ function criarBase({ tipo, diasEmMemoria = 7, carregar = async () => ({ estado: 
         // Navios que saíram continuam no estado, marcados, para detectar se voltarem.
         const proximo = new Map(atual);
         for (const [chave, r] of estado) if (!atual.has(chave)) proximo.set(chave, { ...r, __removido: true });
-        await persistir({ mudancas: novas, estado: proximo, anterior: estado, em });
+        const proximasMarcas = new Map(marcas);
+        for (const chave of atual.keys()) proximasMarcas.set(chave, { primeiroEm: marcas.get(chave)?.primeiroEm || em, vistoEm: em, removidoEm: null });
+        for (const [chave, r] of proximo) {
+          if (!r.__removido) continue;
+          const m = proximasMarcas.get(chave) || { primeiroEm: em, vistoEm: em };
+          if (!m.removidoEm) proximasMarcas.set(chave, { ...m, removidoEm: em });
+        }
+        await persistir({ mudancas: novas, estado: proximo, anterior: estado, em, marcas: proximasMarcas });
         estado = proximo;
+        marcas = proximasMarcas;
         primeiraConsulta = false;
         const limite = Date.now() - diasEmMemoria * 864e5;
         recentes = recentes.concat(novas).filter((m) => Date.parse(m.em) >= limite);
@@ -147,13 +164,17 @@ function criarPostgres(url, { diasHistorico = 180, ssl, ...opcoes } = {}) {
           terminal TEXT, navio TEXT, viagem TEXT, campo TEXT NOT NULL, de TEXT, para TEXT);
         CREATE INDEX IF NOT EXISTS idx_mudancas_em ON navios_mudancas (em DESC);
         CREATE INDEX IF NOT EXISTS idx_mudancas_chave ON navios_mudancas (chave, em DESC);
-        CREATE TABLE IF NOT EXISTS alertas_enviados (id TEXT PRIMARY KEY, em TIMESTAMPTZ NOT NULL DEFAULT NOW());`);
-      const e = await pool.query('SELECT chave, dados, removido FROM navios_estado');
+        CREATE TABLE IF NOT EXISTS alertas_enviados (id TEXT PRIMARY KEY, em TIMESTAMPTZ NOT NULL DEFAULT NOW());
+        ALTER TABLE navios_estado ADD COLUMN IF NOT EXISTS primeiro_em TIMESTAMPTZ;
+        ALTER TABLE navios_estado ADD COLUMN IF NOT EXISTS removido_em TIMESTAMPTZ;
+        UPDATE navios_estado SET primeiro_em = visto_em WHERE primeiro_em IS NULL;`);
+      const e = await pool.query('SELECT chave, dados, removido, primeiro_em, visto_em, removido_em FROM navios_estado');
       const estado = new Map(e.rows.map((l) => [l.chave, { ...(typeof l.dados === 'string' ? JSON.parse(l.dados) : l.dados), ...(l.removido ? { __removido: true } : {}) }]));
+      const marcas = new Map(e.rows.map((l) => [l.chave, { primeiroEm: iso(l.primeiro_em), vistoEm: iso(l.visto_em), removidoEm: l.removido ? iso(l.removido_em) || iso(l.visto_em) : null }]));
       const m = await pool.query(`SELECT * FROM navios_mudancas WHERE em >= NOW() - ($1 || ' days')::interval ORDER BY em`, [String(diasEmMemoria)]);
-      return { estado, recentes: m.rows.map(deLinha) };
+      return { estado, marcas, recentes: m.rows.map(deLinha) };
     },
-    async persistir({ mudancas, estado, anterior, em }) {
+    async persistir({ mudancas, estado, anterior, em, marcas = new Map() }) {
       // Grava as mudanças e só os estados que mudaram.
       for (let i = 0; i < mudancas.length; i += 200) {
         const lote = mudancas.slice(i, i + 200);
@@ -166,12 +187,14 @@ function criarPostgres(url, { diasHistorico = 180, ssl, ...opcoes } = {}) {
         const lote = alterados.slice(i, i + 200);
         const params = lote.flatMap(([chave, r]) => {
           const { __removido, ...dados } = r;
-          return [chave, JSON.stringify(dados), em, Boolean(__removido)];
+          const mc = marcas.get(chave) || {};
+          return [chave, JSON.stringify(dados), em, Boolean(__removido), mc.primeiroEm || em, __removido ? mc.removidoEm || em : null];
         });
-        const valores = lote.map((_, j) => `($${j * 4 + 1}, $${j * 4 + 2}, $${j * 4 + 3}, $${j * 4 + 4})`).join(', ');
+        const valores = lote.map((_, j) => `(${Array.from({ length: 6 }, (__, k) => `$${j * 6 + k + 1}`).join(', ')})`).join(', ');
         await pool.query(
-          `INSERT INTO navios_estado (chave, dados, visto_em, removido) VALUES ${valores}
-           ON CONFLICT (chave) DO UPDATE SET dados = EXCLUDED.dados, visto_em = EXCLUDED.visto_em, removido = EXCLUDED.removido`,
+          `INSERT INTO navios_estado (chave, dados, visto_em, removido, primeiro_em, removido_em) VALUES ${valores}
+           ON CONFLICT (chave) DO UPDATE SET dados = EXCLUDED.dados, visto_em = EXCLUDED.visto_em, removido = EXCLUDED.removido,
+             primeiro_em = COALESCE(navios_estado.primeiro_em, EXCLUDED.primeiro_em), removido_em = EXCLUDED.removido_em`,
           params,
         );
       }
@@ -193,7 +216,7 @@ function criarPostgres(url, { diasHistorico = 180, ssl, ...opcoes } = {}) {
       if (terminal) add('terminal = ?', terminal);
       if (navio) add("upper(regexp_replace(navio, '[^A-Za-z0-9]', '', 'g')) LIKE ?", `%${normalizarChave(navio)}%`);
       if (campo) add('campo = ?', campo);
-      params.push(Math.min(Number(limite) || 500, 5000));
+      params.push(Math.min(Number(limite) || 500, 50000));
       const { rows } = await pool.query(`SELECT * FROM navios_mudancas ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY em DESC LIMIT $${params.length}`, params);
       return rows.map(deLinha);
     },

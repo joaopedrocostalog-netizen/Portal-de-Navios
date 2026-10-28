@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal de Navios na TV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* Sempre escuro: monitores de parede ficam ligados o dia todo. */
+    :root {
+      color-scheme: dark;
+      --fundo: #0b131c; --painel: #121e2b; --linha: #22344a; --tinta: #eef3f8; --tinta-2: #a7b8ca; --tinta-3: #7f93a8;
+      --sinal: #f0b030; --critico: #ff7a6e; --ok: #4fd18b;
+      --t-btp: #3987e5; --t-santos_brasil: #d95926; --t-embraport: #199e70; --t-outro: #7d8b9a;
+      --c: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { margin: 0; background: var(--fundo); color: var(--tinta); font: 400 clamp(14px, 1.15vw, 28px)/1.35 "Barlow", system-ui, sans-serif; overflow: hidden; }
+    body.ocioso { cursor: none; }
+    .tela { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; gap: 1.2vw; padding: 1.6vw 2vw; }
+    header { display: flex; align-items: baseline; gap: 2vw; }
+    h1 { margin: 0; font: 600 2.2vw/1 var(--c); }
+    .filtro { color: var(--tinta-2); font-size: 1.3vw; }
+    .relogio { margin-left: auto; text-align: right; }
+    .relogio strong { display: block; font: 600 4.6vw/0.9 var(--c); font-variant-numeric: tabular-nums; }
+    .relogio span { color: var(--tinta-2); font-size: 1.2vw; }
+    main { display: grid; grid-template-columns: 1.35fr 1fr; gap: 1.2vw; min-height: 0; }
+    .coluna { display: grid; gap: 1.2vw; min-height: 0; grid-auto-rows: minmax(0, auto); align-content: start; }
+    section { background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 1.1vw 1.4vw; min-height: 0; overflow: hidden; }
+    h2 { margin: 0 0 0.6vw; font: 600 1.7vw/1.1 var(--c); color: var(--tinta-2); display: flex; justify-content: space-between; align-items: baseline; }
+    h2 small { font: 500 1.1vw var(--c); color: var(--tinta-3); }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { display: grid; align-items: center; gap: 1vw; padding: 0.55vw 0; border-top: 1px solid var(--linha); }
+    li:first-child { border-top: 0; }
+    .deadlines li { grid-template-columns: 9.5vw minmax(0, 1fr) auto; }
+    .falta { font: 700 2.6vw/1 var(--c); font-variant-numeric: tabular-nums; }
+    .falta.urgente { color: var(--sinal); }
+    .falta.critico { color: var(--critico); }
+    .navio { font: 600 1.9vw/1.1 var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sub { color: var(--tinta-2); font-size: 1.05vw; }
+    .terminal { display: inline-flex; align-items: center; gap: 0.5vw; white-space: nowrap; font-size: 1.15vw; color: var(--tinta-2); }
+    .ponto { width: 0.8vw; height: 0.8vw; border-radius: 50%; display: inline-block; }
+    .t-btp { background: var(--t-btp); } .t-santos_brasil { background: var(--t-santos_brasil); } .t-embraport { background: var(--t-embraport); } .t-outro { background: var(--t-outro); }
+    .curta li { grid-template-columns: 8.5vw minmax(0, 1fr) auto; }
+    .hora { font: 600 1.6vw/1 var(--c); font-variant-numeric: tabular-nums; }
+    .vazio { color: var(--tinta-3); font-size: 1.2vw; padding: 0.4vw 0; }
+    footer { display: flex; gap: 2vw; color: var(--tinta-3); font-size: 1vw; }
+    footer .alerta { color: var(--sinal); }
+    #tela-cheia { position: fixed; right: 2vw; bottom: 2vw; font: inherit; font-size: 15px; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--tinta-3); background: var(--painel); color: var(--tinta); cursor: pointer; }
+    @media (max-aspect-ratio: 4/3) { main { grid-template-columns: 1fr; } body { overflow: auto; } }
+  </style>
+</head>
+<body>
+<div class="tela">
+  <header>
+    <h1>Portal de Navios</h1>
+    <span class="filtro" id="filtro"></span>
+    <div class="relogio"><strong id="hora">--:--</strong><span id="data"></span></div>
+  </header>
+  <main>
+    <section><h2>Próximos deadlines <small id="n-dl"></small></h2><ul class="deadlines" id="deadlines"></ul></section>
+    <div class="coluna">
+      <section><h2>Chegadas hoje e amanhã <small id="n-ch"></small></h2><ul class="curta" id="chegadas"></ul></section>
+      <section><h2>Gates abrindo em 24 horas <small id="n-gt"></small></h2><ul class="curta" id="gates"></ul></section>
+      <section><h2>Aguardando atracação <small id="n-ag"></small></h2><ul class="curta" id="aguardando"></ul></section>
+    </div>
+  </main>
+  <footer><span id="estado">Carregando os dados do DSS…</span><span>Atualiza sozinho a cada minuto.</span></footer>
+</div>
+<button type="button" id="tela-cheia">Tela cheia</button>
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? '—').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const HORA = 36e5, TZ = 'America/Sao_Paulo';
+const fHora = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+const fData = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, weekday: 'long', day: '2-digit', month: 'long' });
+const fDiaHora = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, weekday: 'short', hour: '2-digit', minute: '2-digit' });
+const partes = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+const meiaNoite = (t) => { const [y, m, d] = partes.format(new Date(t)).split('-').map(Number); return Date.UTC(y, m - 1, d, 3); };
+const ms = (iso) => (iso ? Date.parse(iso) : NaN);
+const TERM = { btp: 'BTP', santos_brasil: 'Santos Brasil', embraport: 'Embraport' };
+const term = (t) => `<span class="terminal"><i class="ponto ${TERM[t] ? `t-${t}` : 't-outro'}"></i>${esc(TERM[t] || t)}</span>`;
+const quando = (iso) => { const t = ms(iso); return meiaNoite(t) === meiaNoite(Date.now()) ? fHora.format(new Date(t)) : fDiaHora.format(new Date(t)).replace('.', '').replace(',', ''); };
+function falta(d) {
+  const min = Math.max(0, Math.round(d / 60000));
+  const h = Math.floor(min / 60);
+  return h >= 48 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h}h ${String(min % 60).padStart(2, '0')}`;
+}
+const params = new URLSearchParams(location.search);
+let dados = null;
+
+async function carregar() {
+  const q = new URLSearchParams({ dias: params.get('dias') || '3', encerrados: 'false' });
+  for (const k of ['terminal', 'armador']) if (params.get(k)) q.set(k, params.get(k));
+  try {
+    const res = await fetch(`/api/painel?${q}`);
+    const corpo = await res.json();
+    if (!res.ok) throw new Error(corpo.erro || `HTTP ${res.status}`);
+    dados = corpo;
+    desenhar();
+  } catch (e) {
+    $('#estado').innerHTML = `<span class="alerta">Sem conexão com o portal: ${esc(e.message)}. Mostrando a última atualização.</span>`;
+  }
+}
+
+function lista(el, itens, linha, max, vazio) {
+  $(el).innerHTML = itens.length ? itens.slice(0, max).map(linha).join('') : `<li class="vazio">${vazio}</li>`;
+}
+
+function desenhar() {
+  if (!dados) return;
+  const agora = Date.now();
+  const at = dados.navios.filter((n) => n.situacao.navio !== 'encerrado');
+  const dls = at.filter((n) => ms(n.datas.deadline) > agora).sort((a, b) => ms(a.datas.deadline) - ms(b.datas.deadline));
+  $('#n-dl').textContent = `${dls.filter((n) => ms(n.datas.deadline) - agora <= 24 * HORA).length} nas próximas 24 h`;
+  lista('#deadlines', dls, (n) => {
+    const d = ms(n.datas.deadline) - agora;
+    return `<li><span class="falta ${d < 2 * HORA ? 'critico' : d < 6 * HORA ? 'urgente' : ''}">${falta(d)}</span><span><div class="navio">${esc(n.navio)}</div><div class="sub">viagem ${esc(n.viagem)}, ${quando(n.datas.deadline)}${n.situacao.gate === 'aguardando' ? ', gate ainda fechado' : ''}</div></span>${term(n.terminal)}</li>`;
+  }, 8, 'Nenhum deadline à frente.');
+
+  const fimAmanha = meiaNoite(agora) + 2 * 24 * HORA;
+  const ch = at.filter((n) => !n.datas.atracacao && ms(n.datas.prevChegada) >= agora - 2 * HORA && ms(n.datas.prevChegada) < fimAmanha).sort((a, b) => ms(a.datas.prevChegada) - ms(b.datas.prevChegada));
+  $('#n-ch').textContent = ch.length || '';
+  lista('#chegadas', ch, (n) => `<li><span class="hora">${quando(n.datas.prevChegada)}</span><span class="navio">${esc(n.navio)}</span>${term(n.terminal)}</li>`, 6, 'Nenhuma chegada prevista.');
+
+  const gates = [];
+  for (const n of at) {
+    if (!n.datas.aberturaGate && ms(n.datas.prevAberturaGate) > agora && ms(n.datas.prevAberturaGate) <= agora + 24 * HORA) gates.push({ n, em: n.datas.prevAberturaGate, tipo: 'dry' });
+    if (!n.datas.aberturaGateReefer && ms(n.datas.prevAberturaGateReefer) > agora && ms(n.datas.prevAberturaGateReefer) <= agora + 24 * HORA) gates.push({ n, em: n.datas.prevAberturaGateReefer, tipo: 'reefer' });
+  }
+  gates.sort((a, b) => ms(a.em) - ms(b.em));
+  $('#n-gt').textContent = gates.length || '';
+  lista('#gates', gates, (g) => `<li><span class="hora">${quando(g.em)}</span><span class="navio">${esc(g.n.navio)} <span class="sub">${g.tipo}</span></span>${term(g.n.terminal)}</li>`, 5, 'Nenhum gate abrindo.');
+
+  const ag = at.filter((n) => n.situacao.navio === 'aguardando_atracacao').sort((a, b) => (b.horas.esperaAtracacao || 0) - (a.horas.esperaAtracacao || 0));
+  $('#n-ag').textContent = ag.length || '';
+  lista('#aguardando', ag, (n) => `<li><span class="hora">${Math.round(n.horas.esperaAtracacao || 0)}h</span><span class="navio">${esc(n.navio)}</span>${term(n.terminal)}</li>`, 5, 'Nenhum navio na fila.');
+
+  const idade = agora - ms(dados.consultadoEm);
+  $('#estado').innerHTML = idade > 10 * 60e3
+    ? `<span class="alerta">Atenção: os dados do DSS são de ${fHora.format(new Date(dados.consultadoEm))} (há ${Math.round(idade / 60e3)} min).</span>`
+    : `DSS consultado às ${fHora.format(new Date(dados.consultadoEm))}.`;
+}
+
+function relogio() {
+  $('#hora').textContent = fHora.format(new Date());
+  const d = fData.format(new Date());
+  $('#data').textContent = d.charAt(0).toUpperCase() + d.slice(1);
+}
+
+$('#filtro').textContent = [params.get('terminal') ? TERM[params.get('terminal')] || params.get('terminal') : 'Todos os terminais', params.get('armador') ? `armador ${params.get('armador')}` : ''].filter(Boolean).join(', ');
+$('#tela-cheia').addEventListener('click', () => document.documentElement.requestFullscreen?.());
+document.addEventListener('fullscreenchange', () => { $('#tela-cheia').hidden = Boolean(document.fullscreenElement); });
+let ocioso;
+document.addEventListener('pointermove', () => { document.body.classList.remove('ocioso'); clearTimeout(ocioso); ocioso = setTimeout(() => document.body.classList.add('ocioso'), 3000); });
+relogio();
+carregar();
+setInterval(relogio, 10 * 1000);
+setInterval(desenhar, 30 * 1000);
+setInterval(carregar, 60 * 1000);
+// Recarrega a página uma vez por dia para pegar versões novas do portal.
+setTimeout(() => location.reload(), 24 * 3600 * 1000);
+</script>
+</body>
+</html>

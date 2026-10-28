@@ -84,7 +84,7 @@
     /* ---------- filtros globais ---------- */
     .filtros { max-width: 1320px; margin: 0 auto; padding: 14px 16px 4px; display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; }
     .campo { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--tinta-2); }
-    .campo select, .campo input[type="search"] { min-height: 36px; padding: 6px 10px; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--superficie); }
+    .campo select, .campo input[type="search"], .campo input[type="date"], .campo input[type="text"] { min-height: 36px; padding: 6px 10px; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--superficie); }
     .campo input[type="search"] { width: 190px; }
     .segmentos { display: inline-flex; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--superficie); padding: 2px; gap: 2px; margin: 0; }
     .segmentos label { position: relative; }
@@ -300,6 +300,66 @@
     /* ---------- dica (tooltip) ---------- */
     #dica { position: fixed; z-index: 50; max-width: 320px; pointer-events: none; background: var(--tinta); color: var(--superficie); padding: 8px 10px; border-radius: var(--raio); font-size: 13px; line-height: 1.45; white-space: pre-line; box-shadow: 0 6px 18px rgb(0 0 0 / 0.18); }
 
+    /* ---------- atalhos na ponte ---------- */
+    .atalhos { display: flex; gap: 8px; align-items: center; }
+    .atalhos a { color: var(--ponte-suave); text-decoration: none; font-size: 14px; padding: 6px 8px; border-radius: var(--raio); }
+    .atalhos a:hover { color: var(--ponte-tinta); background: var(--ponte-2); }
+
+    /* ---------- meus navios ---------- */
+    .estrela { border: 0; background: none; padding: 2px; cursor: pointer; color: var(--tinta-3); line-height: 0; vertical-align: -3px; }
+    .estrela svg { width: 18px; height: 18px; }
+    .estrela[aria-pressed="true"] { color: var(--sinal); }
+    .estrela:hover { color: var(--sinal); }
+    .meus-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+    .meu { border: 1px solid var(--linha); border-radius: var(--raio); padding: 10px 12px; display: grid; gap: 4px; background: var(--superficie); }
+    .meu.mudou { border-color: var(--sinal); box-shadow: inset 4px 0 0 var(--sinal); }
+    .meu-topo { display: flex; align-items: center; gap: 6px; }
+    .meu-topo .nome { font-size: 16px; }
+    .meu .linha-data { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+    .meu .linha-data span:first-child { color: var(--tinta-2); }
+
+    /* ---------- observações ---------- */
+    .observacoes { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+    .observacoes li { background: var(--superficie-2); border: 1px solid var(--linha); border-radius: var(--raio); padding: 8px 10px; }
+    .observacoes .quem { font-size: 13px; color: var(--tinta-2); display: flex; justify-content: space-between; gap: 8px; margin-top: 2px; }
+    .link-botao { border: 0; background: none; color: var(--acao); cursor: pointer; padding: 0; font-size: 13px; }
+    .form-obs { display: grid; gap: 8px; }
+    .form-obs textarea { min-height: 70px; margin: 0; }
+    .form-obs .linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+    .form-obs input[type="text"], .form-armador input[type="text"] { min-height: 36px; padding: 6px 10px; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--superficie); }
+    .erro-form { color: var(--critico-tinta); font-size: 14px; }
+
+    /* ---------- confiabilidade ---------- */
+    .frases { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 6px; }
+    .frases li { font-size: 15px; padding-left: 14px; border-left: 3px solid var(--linha-forte); }
+    .divergente { display: grid; grid-template-columns: minmax(110px, 180px) 1fr minmax(200px, 280px); gap: 6px 12px; align-items: center; }
+    .divergente .rotulo { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .div-trilho { position: relative; height: 22px; }
+    .div-trilho::before { content: ""; position: absolute; left: 50%; top: -4px; bottom: -4px; border-left: 1px solid var(--eixo); }
+    .div-barra { position: absolute; top: 5px; height: 12px; }
+    .div-barra.adia { left: 50%; background: var(--div-pos); border-radius: 0 4px 4px 0; }
+    .div-barra.antecipa { right: 50%; background: var(--div-neg); border-radius: 4px 0 0 4px; }
+    .div-valor { font-variant-numeric: tabular-nums; font-size: 14px; }
+    .div-eixo { display: flex; justify-content: space-between; font-size: 12px; color: var(--tinta-3); grid-column: 2; }
+    :root { --div-pos: #e34948; --div-neg: #2a78d6; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --div-pos: #e66767; --div-neg: #3987e5; } }
+
+    /* ---------- armadores ---------- */
+    .grade-armadores { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
+    @media (max-width: 900px) { .grade-armadores { grid-template-columns: 1fr; } }
+    .form-armador { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .form-armador input[type="text"] { width: 110px; text-transform: uppercase; }
+    .form-armador input::placeholder { text-transform: none; }
+    .form-armador select { min-height: 36px; padding: 4px 8px; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--superficie); }
+    .botao.pequeno { min-height: 32px; padding: 4px 10px; font-size: 14px; }
+
+    /* ---------- calendário ---------- */
+    .opcoes { display: grid; gap: 14px; }
+    .opcoes fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+    .opcoes legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
+    .opcoes input[type="url"] { width: 100%; min-height: 38px; padding: 6px 10px; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--superficie-2); font: 13px/1.4 ui-monospace, monospace; }
+    .passos { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--tinta-2); }
+
     @media (prefers-reduced-motion: no-preference) {
       .evento::before { transition: width 0.12s, height 0.12s; }
     }
@@ -313,12 +373,17 @@
       <h1>Portal de Navios</h1>
     </div>
     <div class="estado" id="estado" aria-live="polite">Carregando os dados do DSS…</div>
-    <button class="botao-ponte" type="button" id="atualizar">Atualizar agora</button>
+    <div class="atalhos">
+      <a href="/tv" id="link-tv" target="_blank" rel="noopener">Modo TV</a>
+      <a href="/imprimir" id="link-imprimir" target="_blank" rel="noopener">Imprimir agenda</a>
+      <button class="botao-ponte" type="button" id="atualizar">Atualizar agora</button>
+    </div>
   </div>
   <nav class="abas-principais" aria-label="Seções">
     <a href="#visao">Visão geral</a>
     <a href="#navios">Navios <span class="contador num" id="c-navios"></span></a>
     <a href="#mudancas">Mudanças <span class="contador num" id="c-mudancas"></span></a>
+    <a href="#viagens">Viagens passadas</a>
     <a href="#qualidade">Qualidade dos dados</a>
   </nav>
 </header>
@@ -340,6 +405,7 @@
 <main>
   <!-- ======================= visão geral ======================= -->
   <section id="aba-visao" aria-label="Visão geral">
+    <article class="painel" id="meus-painel" hidden style="margin-bottom:14px"></article>
     <div class="grade-topo">
       <article class="painel destaque" id="proximo" aria-live="polite"></article>
       <div class="indicadores" id="indicadores"></div>
@@ -377,8 +443,11 @@
 
     <article class="painel">
       <div class="painel-topo">
-        <h2>Agenda das próximas 48 horas</h2>
-        <p class="suave">Deadlines, aberturas de gate, chegadas, liberações e saídas em ordem de horário.</p>
+        <div>
+          <h2>Agenda das próximas 48 horas</h2>
+          <p class="suave">Deadlines, aberturas de gate, chegadas, liberações e saídas em ordem de horário.</p>
+        </div>
+        <button type="button" class="botao leve" data-abrir="calendario">Adicionar ao Outlook</button>
       </div>
       <div id="agenda"></div>
     </article>
@@ -392,6 +461,7 @@
         <label class="campo">Gate<select id="f-gate"><option value="">Todos</option><option value="aguardando">Aguardando abertura</option><option value="aberto">Aberto</option><option value="encerrado">Encerrado</option><option value="sem_dado">Sem dado</option></select></label>
         <label class="campo">Ordenar por<select id="f-ordenar"><option value="referencia">Atracação</option><option value="chegada">Chegada</option><option value="deadline">Deadline</option><option value="navio">Nome do navio</option></select></label>
         <label class="marcar"><input type="checkbox" id="f-encerrados"> Mostrar encerrados</label>
+        <label class="marcar"><input type="checkbox" id="f-meus"> Só meus navios</label>
         <span id="chip-especial"></span>
         <div class="direita">
           <span class="contagem-lista" id="contagem-lista"></span>
@@ -399,6 +469,7 @@
             <button type="button" data-vista="tabela" aria-pressed="true">Tabela</button>
             <button type="button" data-vista="linha" aria-pressed="false">Linha do tempo</button>
           </div>
+          <button type="button" class="botao leve" data-abrir="calendario">Adicionar ao Outlook</button>
           <a class="botao leve" id="excel" href="/api/navios.xlsx" download>Exportar Excel</a>
         </div>
       </div>
@@ -422,7 +493,39 @@
       </div>
       <div id="graf-mudancas"></div>
     </article>
+    <article class="painel">
+      <div class="painel-topo">
+        <div>
+          <h2>Confiabilidade das previsões</h2>
+          <p class="suave">Quanto cada terminal ou armador costuma mudar uma data depois de informá-la. Ajuda a decidir quando confiar numa previsão.</p>
+        </div>
+        <div class="barra" style="margin:0">
+          <label class="campo">Data<select id="c-campo"><option value="data_prev_chegada">Chegada</option><option value="data_deadline">Deadline</option><option value="data_prev_saida">Saída</option></select></label>
+          <label class="campo">Comparar<select id="c-agrupar"><option value="terminal">Terminais</option><option value="armador">Armadores</option></select></label>
+          <label class="campo">Período<select id="c-dias"><option value="7">Últimos 7 dias</option><option value="30" selected>Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select></label>
+        </div>
+      </div>
+      <div id="confiabilidade"><p class="suave">Carregando…</p></div>
+    </article>
     <article class="painel"><div id="lista-mudancas"><p class="suave">Carregando…</p></div></article>
+  </section>
+
+  <!-- ======================= viagens passadas ======================= -->
+  <section id="aba-viagens" aria-label="Viagens passadas" hidden>
+    <article class="painel">
+      <div class="painel-topo">
+        <div>
+          <h2>Viagens passadas</h2>
+          <p class="suave" id="viagens-sub">Navios encerrados ou que saíram da lista do DSS, com quando atracaram e saíram. Use a busca e os filtros do topo.</p>
+        </div>
+        <div class="barra" style="margin:0">
+          <label class="campo">De<input type="date" id="v-de" class="campo-data"></label>
+          <label class="campo">Até<input type="date" id="v-ate" class="campo-data"></label>
+          <label class="marcar"><input type="checkbox" id="v-todas"> Incluir os que ainda estão na lista</label>
+        </div>
+      </div>
+      <div id="viagens"><p class="suave">Carregando…</p></div>
+    </article>
   </section>
 
   <!-- ======================= qualidade ======================= -->
@@ -435,6 +538,16 @@
         </div>
       </div>
       <div id="qualidade"><p class="suave">Carregando…</p></div>
+    </article>
+    <article class="painel" id="armadores-painel">
+      <div class="painel-topo">
+        <div>
+          <h2>Tabela de armadores</h2>
+          <p class="suave">Para navios em que o DSS não traz o armador. Cadastre por viagem ou pelo nome do navio: a regra vale para todos os dados, inclusive viagens futuras, e o armador do DSS sempre tem prioridade quando vier certo.</p>
+        </div>
+        <label class="campo">Seu nome<input type="text" id="nome-armadores" class="campo-nome" placeholder="Para saber quem cadastrou" maxlength="60"></label>
+      </div>
+      <div id="armadores"><p class="suave">Carregando…</p></div>
     </article>
   </section>
 
@@ -451,6 +564,44 @@
     <button class="botao leve" type="button" id="fechar">Fechar</button>
   </div>
   <div class="detalhe-corpo" id="detalhe-corpo"></div>
+</dialog>
+<dialog id="calendario" aria-labelledby="calendario-titulo">
+  <div class="detalhe-topo">
+    <div><h2 id="calendario-titulo">Deadlines no Outlook</h2><p class="suave" style="margin-top:4px">Assine este calendário uma vez e ele se atualiza sozinho com as datas do DSS.</p></div>
+    <button class="botao leve" type="button" data-fechar>Fechar</button>
+  </div>
+  <div class="detalhe-corpo opcoes">
+    <fieldset id="cal-tipos"><legend>O que entra</legend>
+      <label class="marcar"><input type="checkbox" value="deadline" checked> Deadlines</label>
+      <label class="marcar"><input type="checkbox" value="gate" checked> Aberturas de gate</label>
+      <label class="marcar"><input type="checkbox" value="chegada"> Chegadas previstas</label>
+      <label class="marcar"><input type="checkbox" value="atracacao"> Atracações</label>
+    </fieldset>
+    <fieldset id="cal-escopo"><legend>Quais navios</legend>
+      <label class="marcar"><input type="radio" name="cal-escopo" value="filtros" checked> Os dos filtros atuais (terminal e armador)</label>
+      <label class="marcar"><input type="radio" name="cal-escopo" value="meus"> Só os meus navios</label>
+      <label class="marcar"><input type="radio" name="cal-escopo" value="todos"> Todos</label>
+    </fieldset>
+    <label class="campo" style="max-width:280px">Lembrete antes do deadline<select id="cal-lembrete"><option value="0">Sem lembrete</option><option value="60">1 hora antes</option><option value="120" selected>2 horas antes</option><option value="240">4 horas antes</option><option value="1440">1 dia antes</option></select></label>
+    <div>
+      <label class="campo">Link do calendário<input type="url" id="cal-link" readonly></label>
+      <p class="suave" id="cal-aviso-meus" hidden style="margin-top:6px">Este link guarda os navios marcados agora. Se marcar outros, gere o link de novo.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        <button type="button" class="botao" id="cal-copiar">Copiar link</button>
+        <a class="botao leve" id="cal-webcal" href="#">Abrir no Outlook do computador</a>
+        <a class="botao leve" id="cal-baixar" href="#" download="portal-de-navios.ics">Baixar arquivo .ics</a>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:6px">No Outlook da web ou do Microsoft 365</h3>
+      <ol class="passos">
+        <li>Abra o Calendário e clique em "Adicionar calendário".</li>
+        <li>Escolha "Assinar da Web" e cole o link acima.</li>
+        <li>Dê um nome, como "Navios", e clique em "Importar".</li>
+      </ol>
+      <p class="fraco" style="margin-top:6px;font-size:13px">O Outlook busca as novidades sozinho, em geral a cada poucas horas. O arquivo .ics é uma cópia fixa: use só se não puder assinar.</p>
+    </div>
+  </div>
 </dialog>
 <div id="dica" role="tooltip" hidden></div>
 
@@ -523,6 +674,77 @@ async function api(caminho) {
   if (!res.ok) throw new Error(corpo.erro || `HTTP ${res.status}`);
   return corpo;
 }
+async function enviarJson(caminho, metodo, corpo) {
+  const res = await fetch(caminho, { method: metodo, headers: corpo ? { 'content-type': 'application/json' } : {}, body: corpo ? JSON.stringify(corpo) : undefined });
+  const r = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(r.erro || `HTTP ${res.status}`);
+  return r;
+}
+const meuNome = () => lembrar('nome', '');
+
+// ============================================================ meus navios (guardados neste navegador)
+let meus = lembrar('meus', {}); // chave -> { navio, viagem, terminal, desde, vistoEm }
+const ehMeu = (ch) => Boolean(meus[ch]);
+const ICONE_ESTRELA = (cheia) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.8l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="${cheia ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+function estrela(i) {
+  const ch = chave(i), on = ehMeu(ch);
+  return `<button type="button" class="estrela" data-meu="${esc(ch)}" data-navio="${esc(i.navio)}" data-viagem="${esc(i.viagem)}" data-terminal="${esc(i.terminal)}" aria-pressed="${on}" aria-label="${on ? 'Deixar de acompanhar' : 'Acompanhar'} ${esc(i.navio)}" data-dica="${on ? 'Deixar de acompanhar' : 'Acompanhar este navio (fica fixo no topo)'}">${ICONE_ESTRELA(on)}</button>`;
+}
+function alternarMeu(b) {
+  const ch = b.dataset.meu;
+  const agora = new Date().toISOString();
+  if (meus[ch]) delete meus[ch];
+  else meus[ch] = { navio: b.dataset.navio, viagem: b.dataset.viagem, terminal: b.dataset.terminal, desde: agora, vistoEm: agora };
+  guardar('meus', meus);
+  for (const e of document.querySelectorAll(`[data-meu="${CSS.escape(ch)}"]`)) {
+    const on = ehMeu(ch);
+    e.setAttribute('aria-pressed', String(on));
+    e.dataset.dica = on ? 'Deixar de acompanhar' : 'Acompanhar este navio (fica fixo no topo)';
+    e.innerHTML = ICONE_ESTRELA(on);
+  }
+  esconderDica();
+  mostrarMeus();
+  if (abaAtual() === 'navios') mostrarNavios();
+}
+function marcarVisto(ch) {
+  if (!meus[ch]) return;
+  meus[ch].vistoEm = new Date().toISOString();
+  guardar('meus', meus);
+  mostrarMeus();
+}
+/** Mudanças de datas de um navio depois de uma data (usa o histórico de 7 dias se já carregado). */
+function mudancasDesde(ch, desde) {
+  const fonte = mudancas?.mudancas || dados?.mudancas || [];
+  return fonte.filter((m) => m.chave === ch && m.campo !== 'registro' && m.campo !== 'armador' && m.em > desde);
+}
+function mostrarMeus() {
+  const el = $('#meus-painel');
+  const chs = Object.keys(meus);
+  if (!chs.length || !dados) { el.hidden = true; return; }
+  el.hidden = false;
+  const porChave = new Map(dados.navios.map((n) => [n.chave, n]));
+  const agora = Date.now();
+  const proxima = (iso) => (iso ? `${data(iso)}${ms(iso) > agora ? ` <span class="fraco">em ${duracao(ms(iso) - agora)}</span>` : ''}` : '<span class="fraco">—</span>');
+  const cartoes = chs.map((ch) => {
+    const m = meus[ch], n = porChave.get(ch), novas = mudancasDesde(ch, m.vistoEm);
+    const ordem = novas.length ? 0 : n ? 1 : 2;
+    if (!n) {
+      return { ordem, chave: ch, html: `<div class="meu"><div class="meu-topo">${estrela({ ...m, chave: ch })}<button type="button" class="nome" data-chave="${esc(ch)}">${esc(m.navio)}</button></div><span class="sub suave">${terminalTag(m.terminal)} viagem ${esc(m.viagem)}</span><span class="fraco" style="font-size:13px">Fora dos filtros atuais ou já saiu da lista do DSS.</span></div>` };
+    }
+    const d = n.datas;
+    const aviso = novas.length ? `<span class="selo s-atencao" style="justify-self:start">${novas.length === 1 ? `${esc(novas[0].rotulo)} mudou` : `${novas.length} datas mudaram`} desde sua última visita</span>` : '';
+    return {
+      ordem, chave: ch, deadline: ms(d.deadline) || Infinity,
+      html: `<div class="meu${novas.length ? ' mudou' : ''}"><div class="meu-topo">${estrela(n)}${botaoNavio(n)}<span style="margin-left:auto">${selo(n.situacao.navio)}</span></div>
+        <span class="suave" style="font-size:13px">${terminalTag(n.terminal)} viagem ${esc(n.viagem)}${n.observacoes ? `, ${n.observacoes} observaç${n.observacoes === 1 ? 'ão' : 'ões'}` : ''}</span>
+        ${aviso}
+        <div class="linha-data"><span>Deadline</span><span class="num">${proxima(d.deadline)}</span></div>
+        <div class="linha-data"><span>${d.atracacao ? 'Atracou' : 'Chegada'}</span><span class="num">${proxima(d.atracacao || d.prevChegada)}</span></div>
+        <div class="linha-data"><span>Saída</span><span class="num">${proxima(d.prevSaida)}</span></div></div>`,
+    };
+  }).sort((a, b) => a.ordem - b.ordem || (a.deadline || Infinity) - (b.deadline || Infinity));
+  el.innerHTML = `<div class="painel-topo" style="margin-bottom:10px"><div><h2>Meus navios</h2><p class="suave">Marcados com a estrela. Ficam guardados só neste navegador. Abra o navio para tirar o aviso de mudança.</p></div></div><div class="meus-lista">${cartoes.map((c) => c.html).join('')}</div>`;
+}
 
 // ============================================================ estado
 let dados = null;            // resposta de /api/painel
@@ -554,8 +776,12 @@ async function carregar(atualizar = false) {
     preencherArmadores(dados.armadores);
     mostrarEstado();
     desenhar();
-    if (atualizar || abaAtual() === 'mudancas') carregarMudancas();
+    if (atualizar || abaAtual() === 'mudancas' || (!mudancas && Object.keys(meus).length)) carregarMudancas();
     if (atualizar && qualidade) carregarQualidade();
+    if (abaAtual() === 'viagens') carregarViagens();
+    const t = new FormData($('#filtros')).get('terminal');
+    $('#link-tv').href = `/tv${t ? `?terminal=${t}` : ''}`;
+    $('#link-imprimir').href = `/imprimir${t ? `?terminal=${t}` : ''}`;
   } catch (e) {
     mostrarAviso(`Não foi possível carregar os dados: ${e.message}`, true);
     $('#estado').textContent = 'Sem dados do DSS';
@@ -593,6 +819,7 @@ function desenhar() {
   if (!dados) return;
   $('#c-navios').textContent = ativos().length;
   $('#c-mudancas').textContent = dados.mudancas.filter((m) => m.campo !== 'registro').length || '';
+  mostrarMeus();
   mostrarProximo();
   mostrarIndicadores();
   mostrarFaixa();
@@ -624,6 +851,7 @@ function mostrarProximo() {
     <p class="contagem num" aria-label="${esc(duracao(falta))}">${contagem}</p>
     <p class="navio-grande">${botaoNavio(n)}</p>
     <p class="linha-meta">${terminalTag(n.terminal)}<span>viagem ${esc(n.viagem)}</span><span>${esc(nomeDia(ms(n.datas.deadline)))} às ${hora(n.datas.deadline)}</span>${gate ? `<span>${gate}</span>` : ''}</p>
+    ${n.conteineres?.total ? `<p class="linha-meta"><span><strong>${n.conteineres.fora}</strong> de ${n.conteineres.total} contêineres da Costalog ainda fora do terminal</span></p>` : ''}
     ${seguintes.length ? `<div class="depois"><span class="suave">${em24.length > 1 ? `Mais ${em24.length - 1} deadline${em24.length > 2 ? 's' : ''} nas próximas 24 horas.` : 'Os próximos:'}</span>
       <ol>${seguintes.map((x) => `<li><span class="num">${data(x.datas.deadline)}</span><span>${botaoNavio(x)}</span>${terminalTag(x.terminal)}</li>`).join('')}</ol></div>` : ''}`;
 }
@@ -825,11 +1053,12 @@ const ESPECIAIS = {
 };
 
 function naviosFiltrados() {
-  const sit = $('#f-situacao').value, gate = $('#f-gate').value, enc = $('#f-encerrados').checked || sit === 'encerrado';
+  const sit = $('#f-situacao').value, gate = $('#f-gate').value, enc = $('#f-encerrados').checked || sit === 'encerrado', soMeus = $('#f-meus').checked;
   const ordem = ORDENS[$('#f-ordenar').value] || ORDENS.referencia;
   return dados.navios
-    .filter((n) => (enc || n.situacao.navio !== 'encerrado') && (!sit || n.situacao.navio === sit) && (!gate || n.situacao.gate === gate || n.situacao.gateReefer === gate) && (!especial || ESPECIAIS[especial][1](n)))
-    .sort((a, b) => String(ordem(a) ?? '~').localeCompare(String(ordem(b) ?? '~')));
+    .filter((n) => (enc || n.situacao.navio !== 'encerrado') && (!sit || n.situacao.navio === sit) && (!gate || n.situacao.gate === gate || n.situacao.gateReefer === gate) && (!especial || ESPECIAIS[especial][1](n)) && (!soMeus || ehMeu(n.chave)))
+    // Meus navios ficam fixos no topo.
+    .sort((a, b) => Number(ehMeu(b.chave)) - Number(ehMeu(a.chave)) || String(ordem(a) ?? '~').localeCompare(String(ordem(b) ?? '~')));
 }
 
 function mostrarNavios() {
@@ -853,9 +1082,10 @@ const prevReal = (prev, real, atr) => (real ? `${data(real)}${atraso(atr)}` : pr
 function mostrarTabela(navios) {
   if (!navios.length) { $('#tabela').innerHTML = '<p class="vazio">Nenhum navio com esses filtros. Tente outro período ou limpe os filtros.</p>'; return; }
   const linhas = navios.map((n) => `<tr>
-      <td>${botaoNavio(n)}${n.mudancas24h ? ` <span class="selo s-atencao" data-dica="Datas que mudaram nas últimas 24 horas" tabindex="0">mudou ${n.mudancas24h}×</span>` : ''}${ajustes(n)}<div class="sub">viagem ${esc(n.viagem)}, ${esc(n.armador)}${n.armadorOrigem && n.armadorOrigem !== 'dss' ? ` <span data-dica="Armador deduzido pelo ${esc(n.armadorOrigem)}" tabindex="0">(deduzido)</span>` : ''}</div></td>
+      <td>${estrela(n)} ${botaoNavio(n)}${n.mudancas24h ? ` <span class="selo s-atencao" data-dica="Datas que mudaram nas últimas 24 horas" tabindex="0">mudou ${n.mudancas24h}×</span>` : ''}${n.observacoes ? ` <span class="selo s-info" data-dica="Observações da equipe: abra o navio para ler" tabindex="0">${n.observacoes} obs.</span>` : ''}${ajustes(n)}<div class="sub">viagem ${esc(n.viagem)}, ${esc(n.armador)}${n.armadorOrigem && n.armadorOrigem !== 'dss' ? ` <span data-dica="Armador vindo da ${esc(n.armadorOrigem === 'tabela de armadores' ? 'tabela de armadores' : `dedução pelo ${n.armadorOrigem}`)}" tabindex="0">(${n.armadorOrigem === 'tabela de armadores' ? 'tabela' : 'deduzido'})</span>` : ''}</div></td>
       <td>${terminalTag(n.terminal)}</td>
       <td>${selo(n.situacao.navio)}${n.horas.esperaAtracacao ? `<div class="sub">há ${Math.round(n.horas.esperaAtracacao)} h</div>` : ''}</td>
+      ${dados.etracking ? `<td class="num">${n.conteineres?.total ? `${n.conteineres.total}<div class="sub">${n.conteineres.fora} fora do terminal</div>` : '<span class="fraco">—</span>'}</td>` : ''}
       <td class="num">${data(n.datas.prevChegada)}</td>
       <td class="num">${prevReal(n.datas.prevAtracacao, n.datas.atracacao, n.horas.atrasoAtracacao)}</td>
       <td class="num">${data(n.datas.prevSaida)}${n.horas.estadia !== null ? `<div class="sub">${n.horas.estadia} h no berço</div>` : ''}</td>
@@ -866,7 +1096,7 @@ function mostrarTabela(navios) {
       <td>${selo(n.situacao.reefer)}<div class="num">${prevReal(n.datas.prevLiberacaoReefer, n.datas.liberacaoReefer, n.horas.atrasoLiberacaoReefer)}</div></td>
     </tr>`).join('');
   $('#tabela').innerHTML = `<div class="tabela-rolagem"><table><thead><tr>
-      <th scope="col">Navio</th><th scope="col">Terminal</th><th scope="col">Situação</th><th scope="col">Chegada prevista</th><th scope="col">Atracação</th><th scope="col">Saída prevista</th>
+      <th scope="col">Navio</th><th scope="col">Terminal</th><th scope="col">Situação</th>${dados.etracking ? '<th scope="col">Contêineres</th>' : ''}<th scope="col">Chegada prevista</th><th scope="col">Atracação</th><th scope="col">Saída prevista</th>
       <th scope="col">Gate dry</th><th scope="col">Gate reefer</th><th scope="col">Deadline</th><th scope="col">Liberação dry</th><th scope="col">Liberação reefer</th>
     </tr></thead><tbody>${linhas}</tbody></table></div>`;
 }
@@ -902,7 +1132,7 @@ function mostrarLinha(navios) {
       const dl = d.deadline && ms(d.deadline) >= ini && ms(d.deadline) <= fim ? `<span class="gantt-deadline" style="left:${pos(ms(d.deadline))}%"></span>` : '';
       const classe = n.situacao.navio === 'atracado' ? '' : n.situacao.navio === 'encerrado' ? 'encerrado' : 'previsto';
       const dica = `${n.navio}, viagem ${n.viagem}\n${SITUACAO[n.situacao.navio]?.[0] || n.situacao.navio}\n${d.atracacao ? 'Atracou' : d.prevAtracacao ? 'Atracação prevista' : 'Chegada prevista'} ${data(new Date(s).toISOString())}\n${semSaida ? 'Sem saída prevista (1 dia estimado)' : `Saída prevista ${data(d.prevSaida)}`}${d.deadline ? `\nDeadline ${data(d.deadline)}` : ''}`;
-      return `<div class="gantt-linha"><div class="gantt-rotulo">${botaoNavio(n)} <span class="fraco">${esc(n.viagem)}</span></div><div class="gantt-trilho">${grade}${gate}${dl}<button type="button" class="gantt-barra ${classe}${semSaida ? ' estimado' : ''}" style="--cor:var(--${classeT(n.terminal)});left:${pos(s)}%;width:${Math.max(pos(e) - pos(s), 0.6)}%" data-chave="${esc(chave(n))}" data-dica="${esc(dica)}" aria-label="${esc(dica.replace(/\n/g, ', '))}"></button></div></div>`;
+      return `<div class="gantt-linha"><div class="gantt-rotulo">${estrela(n)} ${botaoNavio(n)} <span class="fraco">${esc(n.viagem)}</span></div><div class="gantt-trilho">${grade}${gate}${dl}<button type="button" class="gantt-barra ${classe}${semSaida ? ' estimado' : ''}" style="--cor:var(--${classeT(n.terminal)});left:${pos(s)}%;width:${Math.max(pos(e) - pos(s), 0.6)}%" data-chave="${esc(chave(n))}" data-dica="${esc(dica)}" aria-label="${esc(dica.replace(/\n/g, ', '))}"></button></div></div>`;
     });
     return `<div class="gantt-terminal"><span class="ponto ${classeT(t)}"></span>${esc(nomeTerminal(t))} <span class="suave" style="font:400 14px var(--fonte)">${linhas.length} ${linhas.length === 1 ? 'navio' : 'navios'}</span></div>${linhas.join('')}`;
   });
@@ -950,6 +1180,7 @@ async function carregarMudancas() {
   try {
     mudancas = await api('/api/mudancas?horas=168&limite=5000');
     mostrarMudancas();
+    mostrarMeus();
   } catch (e) {
     $('#lista-mudancas').innerHTML = `<p class="vazio">Não foi possível carregar as mudanças: ${esc(e.message)}</p>`;
   }
@@ -1067,10 +1298,13 @@ async function abrirDetalhe(ch) {
 function mostrarDetalhe(d) {
   const n = d.navio;
   const ref = n || d.mudancas[0];
-  $('#detalhe-titulo').innerHTML = `<h2 id="detalhe-nome">${esc(ref.navio)}</h2>
+  $('#detalhe-titulo').innerHTML = `<h2 id="detalhe-nome">${esc(ref.navio)} ${estrela({ ...ref, chave: d.chave })}</h2>
     <p class="linha-meta" style="margin-top:4px">${terminalTag(ref.terminal)}<span>viagem ${esc(ref.viagem)}</span>${n ? `<span>armador ${esc(n.armador)}</span>` : ''}</p>
     ${n ? `<p style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${selo(n.situacao.navio)}${selo(n.situacao.gate, `gate dry ${(SITUACAO[n.situacao.gate] || [n.situacao.gate])[0].toLowerCase()}`)}${ajustes(n)}</p>` : ''}`;
   let html = '';
+  if (d.passado) {
+    html += `<p class="suave" style="margin-bottom:14px">Viagem passada: ${d.passado.removidoEm ? `saiu da lista do DSS em ${data(d.passado.removidoEm)}` : 'encerrada'}${d.passado.primeiroEm ? `, registrada no portal desde ${data(d.passado.primeiroEm)}` : ''}. As datas abaixo são as últimas que o DSS informou.</p>`;
+  }
   if (n) {
     const porEvento = {};
     for (const m of d.mudancas) { const e = eventoDe(m); if (e) porEvento[e] = (porEvento[e] || 0) + 1; }
@@ -1099,7 +1333,212 @@ function mostrarDetalhe(d) {
     ? `<ul class="lista">${d.mudancas.map((m) => `<li class="mudanca"><span class="hora">${hora(m.em)}</span><span><span class="fraco">${fDiaMes.format(new Date(m.em))}</span> ${textoMudanca(m)}</span></li>`).join('')}</ul>`
     : '<p class="suave">Nenhuma mudança registrada para este navio.</p>';
   if (d.historico === 'memoria') html += '<p class="fraco" style="margin-top:10px;font-size:13px">O histórico recomeça quando o servidor reinicia (sem banco de dados).</p>';
+
+  if (Array.isArray(d.conteineres)) {
+    const fora = d.conteineres.filter((c) => !c.noTerminal).length;
+    html += `<h3 style="margin-top:20px">Contêineres da Costalog (eTracking)</h3>${d.conteineres.length
+      ? `<p class="suave" style="margin-bottom:6px">${d.conteineres.length} contêiner${d.conteineres.length === 1 ? '' : 'es'}, ${fora} ainda fora do terminal.</p>
+        <div class="tabela-rolagem" style="max-height:260px"><table><thead><tr><th>Contêiner</th><th>Booking</th><th>Cliente</th><th>Tipo</th><th>Situação</th><th>Entrada no terminal</th></tr></thead><tbody>${d.conteineres
+          .map((c) => `<tr><td>${esc(c.conteiner)}</td><td>${esc(c.booking)}</td><td>${esc(c.cliente)}</td><td>${esc(c.tipo)}</td><td>${c.noTerminal ? selo('liberado', 'no terminal') : selo('aguardando', 'fora do terminal')} <span class="sub">${esc(c.situacao || '')}</span></td><td class="num">${c.entrada ? esc(c.entrada) : '—'}</td></tr>`)
+          .join('')}</tbody></table></div>`
+      : '<p class="suave">Nenhum contêiner do eTracking ligado a esta viagem.</p>'}`;
+  }
+
+  const obs = d.observacoes || [];
+  html += `<h3 style="margin-top:20px">Observações da equipe</h3>
+    ${obs.length ? `<ul class="observacoes">${obs.map((o) => `<li>${esc(o.texto)}<div class="quem"><span>${esc(o.autor)}, ${data(o.em)}</span><button type="button" class="link-botao" data-apagar-obs="${esc(o.id)}">Apagar</button></div></li>`).join('')}</ul>` : '<p class="suave" style="margin-bottom:10px">Nenhuma observação ainda.</p>'}
+    <form class="form-obs" id="form-obs" data-obs-chave="${esc(d.chave)}" data-navio="${esc(ref.navio)}" data-viagem="${esc(ref.viagem)}" data-terminal="${esc(ref.terminal)}">
+      <label class="sr" for="obs-texto">Nova observação</label>
+      <textarea id="obs-texto" name="texto" maxlength="1000" placeholder="Ex.: booking confirmado, cliente avisado do atraso" required></textarea>
+      <div class="linha">
+        <label class="campo">Seu nome<input type="text" name="autor" maxlength="60" value="${esc(meuNome())}" placeholder="Para a equipe saber quem escreveu"></label>
+        <button class="botao" type="submit">Salvar observação</button>
+        <span class="erro-form" role="alert"></span>
+      </div>
+    </form>`;
   $('#detalhe-corpo').innerHTML = html;
+  marcarVisto(d.chave);
+}
+
+async function salvarObservacao(form) {
+  const erro = form.querySelector('.erro-form');
+  erro.textContent = '';
+  const f = new FormData(form);
+  guardar('nome', f.get('autor') || '');
+  try {
+    await enviarJson('/api/observacoes', 'POST', { chave: form.dataset.obsChave, navio: form.dataset.navio, viagem: form.dataset.viagem, terminal: form.dataset.terminal, texto: f.get('texto'), autor: f.get('autor') });
+    await abrirDetalhe(form.dataset.obsChave);
+    carregar();
+  } catch (e) {
+    erro.textContent = `Não foi possível salvar: ${e.message}`;
+  }
+}
+
+async function apagarObservacao(b) {
+  if (!b.dataset.confirmar) {
+    b.dataset.confirmar = '1';
+    b.textContent = 'Clique de novo para apagar';
+    setTimeout(() => { if (b.isConnected) { delete b.dataset.confirmar; b.textContent = 'Apagar'; } }, 4000);
+    return;
+  }
+  try {
+    await enviarJson(`/api/observacoes?id=${encodeURIComponent(b.dataset.apagarObs)}`, 'DELETE');
+    const form = $('#form-obs');
+    if (form) await abrirDetalhe(form.dataset.obsChave);
+    carregar();
+  } catch (e) {
+    b.textContent = `Erro: ${e.message}`;
+  }
+}
+
+// ============================================================ confiabilidade das previsões
+let confiabilidade = null;
+async function carregarConfiabilidade() {
+  const q = new URLSearchParams({ campo: $('#c-campo').value, agrupar: $('#c-agrupar').value, dias: $('#c-dias').value });
+  const t = new FormData($('#filtros')).get('terminal');
+  if (t && $('#c-agrupar').value === 'armador') q.set('terminal', t);
+  try {
+    confiabilidade = await api(`/api/confiabilidade?${q}`);
+    mostrarConfiabilidade();
+  } catch (e) {
+    $('#confiabilidade').innerHTML = `<p class="vazio">Não foi possível calcular: ${esc(e.message)}</p>`;
+  }
+}
+function horasTexto(h) {
+  const a = Math.abs(h);
+  return a >= 48 ? `${(a / 24).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} dias` : `${Math.round(a)} h`;
+}
+function mostrarConfiabilidade() {
+  const c = confiabilidade;
+  const desde = c.historicoDesde ? fDiaMes.format(new Date(c.historicoDesde)) : null;
+  const grupos = c.grupos.filter((g) => g.navios > 0);
+  const comMudanca = grupos.filter((g) => g.mudaram > 0);
+  if (!comMudanca.length) {
+    $('#confiabilidade').innerHTML = `<p class="vazio">Ainda não há mudanças dessa data no período.${desde ? ` O portal guarda o histórico desde ${desde}; a medida fica mais confiável com algumas semanas de dados.` : ''}</p>`;
+    return;
+  }
+  const max = Math.max(1, ...comMudanca.map((g) => Math.abs(g.mediaQuandoMuda)));
+  const nome = (g) => (c.agrupar === 'terminal' ? terminalTag(g.grupo) : esc(g.grupo));
+  const linhas = grupos.map((g) => {
+    const v = g.mediaQuandoMuda;
+    const barra = v ? `<span class="div-barra ${v > 0 ? 'adia' : 'antecipa'}" style="width:${(Math.abs(v) / max) * 50}%"></span>` : '';
+    const dica = `${c.agrupar === 'terminal' ? nomeTerminal(g.grupo) : g.grupo}\n${g.navios} navios com a data no período, ${g.mudaram} mudaram (${g.pctMudaram}%)${g.mudaram ? `\nAdiaram: ${g.adiaram}; anteciparam: ${g.anteciparam}\nMediana quando muda: ${g.medianaQuandoMuda > 0 ? '+' : ''}${horasTexto(g.medianaQuandoMuda)}\nMaior mudança: ${g.maior.navio}, ${g.maior.horas > 0 ? 'adiou' : 'antecipou'} ${horasTexto(g.maior.horas)}` : ''}`;
+    return `<span class="rotulo">${nome(g)}</span>
+      <span class="div-trilho" data-dica="${esc(dica)}" tabindex="0" aria-label="${esc(dica.replace(/\n/g, ', '))}">${barra}</span>
+      <span class="div-valor">${v ? `<strong>${v > 0 ? 'adia' : 'antecipa'} ${horasTexto(v)}</strong>` : '<span class="fraco">sem mudança</span>'} <span class="sub">${g.mudaram} de ${g.navios} navios (${g.pctMudaram}%)</span></span>`;
+  });
+  $('#confiabilidade').innerHTML = `${c.frases.length ? `<ul class="frases">${c.frases.slice(0, 3).map((f) => `<li>${esc(f.texto)}</li>`).join('')}</ul>` : ''}
+    <div class="divergente">${linhas.join('')}<span></span><span class="div-eixo"><span>antecipou</span><span>0</span><span>adiou</span></span><span></span></div>
+    <div class="legenda" style="margin-top:10px"><span><i class="ponto" style="background:var(--div-neg);border-radius:2px"></i>Antecipou, em média</span><span><i class="ponto" style="background:var(--div-pos);border-radius:2px"></i>Adiou, em média</span></div>
+    <p class="fraco" style="margin-top:8px;font-size:13px">Para cada navio, conta quanto a data andou da primeira à última versão no período; a barra é a média entre os navios em que ela mudou. ${desde ? `Histórico desde ${desde}.` : ''}${c.historico === 'memoria' ? ' Sem banco de dados, o histórico recomeça quando o servidor reinicia.' : ''}</p>`;
+}
+
+// ============================================================ viagens passadas
+async function carregarViagens() {
+  const f = new FormData($('#filtros'));
+  const q = new URLSearchParams();
+  for (const k of ['terminal', 'armador', 'navio']) if (f.get(k)) q.set(k, f.get(k));
+  if ($('#v-de').value) q.set('de', $('#v-de').value);
+  if ($('#v-ate').value) q.set('ate', $('#v-ate').value);
+  if ($('#v-todas').checked) q.set('todas', 'true');
+  try {
+    mostrarViagens(await api(`/api/viagens?${q}`));
+  } catch (e) {
+    $('#viagens').innerHTML = `<p class="vazio">Não foi possível buscar as viagens: ${esc(e.message)}</p>`;
+  }
+}
+function mostrarViagens(r) {
+  $('#viagens-sub').textContent = `Navios encerrados ou que saíram da lista do DSS${r.desde ? `, guardados desde ${fDiaMes.format(new Date(r.desde))}` : ''}. Use a busca e os filtros do topo. O DSS não informa a saída real: aparece a última saída prevista e quando o navio saiu da lista.`;
+  if (!r.viagens.length) { $('#viagens').innerHTML = '<p class="vazio">Nenhuma viagem passada com esses filtros.</p>'; return; }
+  $('#viagens').innerHTML = `<p class="suave" style="margin-bottom:8px">${r.total} ${r.total === 1 ? 'viagem' : 'viagens'}${r.total > r.viagens.length ? `, mostrando as ${r.viagens.length} mais recentes` : ''}.</p>
+    <div class="tabela-rolagem"><table><thead><tr><th scope="col">Navio</th><th scope="col">Terminal</th><th scope="col">Armador</th><th scope="col">Chegada prevista</th><th scope="col">Atracou</th><th scope="col">Saída prevista (última)</th><th scope="col">Saiu da lista do DSS</th><th scope="col">Datas que mudaram</th></tr></thead><tbody>
+    ${r.viagens.map((v) => `<tr><td>${estrela(v)} ${botaoNavio(v)}<div class="sub">viagem ${esc(v.viagem)}</div></td><td>${terminalTag(v.terminal)}</td><td>${esc(v.armador)}</td><td class="num">${data(v.datas.prevChegada)}</td><td class="num">${v.datas.atracacao ? data(v.datas.atracacao) : ms(v.datas.prevChegada) > Date.now() ? '<span class="fraco">ainda não chegou</span>' : '<span class="fraco" data-dica="O terminal não informou a atracação" tabindex="0">não informada</span>'}</td><td class="num">${data(v.datas.prevSaida)}</td><td class="num">${v.removidoEm ? data(v.removidoEm) : '<span class="fraco">ainda na lista</span>'}</td><td class="num">${v.mudancas || '<span class="fraco">0</span>'}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+// ============================================================ tabela de armadores
+let armadoresDados = null;
+let armadoresTodos = false;
+async function carregarArmadores() {
+  try {
+    armadoresDados = await api('/api/armadores');
+    mostrarArmadores();
+  } catch (e) {
+    $('#armadores').innerHTML = `<p class="vazio">Não foi possível carregar a tabela: ${esc(e.message)}</p>`;
+  }
+}
+function mostrarArmadores() {
+  const { regras, semArmador, conhecidos } = armadoresDados;
+  const t = new FormData($('#filtros')).get('terminal');
+  const lista = semArmador.filter((n) => !t || n.terminal === t);
+  const semNenhum = lista.filter((n) => !n.armador).length;
+  const visiveis = armadoresTodos ? lista : lista.slice(0, 40);
+  $('#nome-armadores').value = meuNome();
+  $('#armadores').innerHTML = `<datalist id="lista-armadores">${conhecidos.map((a) => `<option value="${esc(a)}">`).join('')}</datalist>
+    <div class="grade-armadores">
+      <div>
+        <h3 style="margin-bottom:4px">Navios sem armador válido do DSS</h3>
+        <p class="suave" style="margin-bottom:8px">${lista.length} navios${semNenhum ? `, ${semNenhum} sem nenhum armador` : ''}. Os que já têm um armador mostram de onde ele veio.</p>
+        ${lista.length ? `<ul class="lista">${visiveis.map((n) => `<li style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center">
+            <span>${botaoNavio(n)} <span class="fraco">${esc(n.viagem)}</span><br>${terminalTag(n.terminal)} ${n.armador ? `<span class="sub">hoje: <strong>${esc(n.armador)}</strong> (${esc(n.armadorOrigem)})</span>` : '<span class="selo s-critico">sem armador</span>'}</span>
+            <form class="form-armador" data-navio="${esc(n.navio)}" data-viagem="${esc(n.viagem)}">
+              <input type="text" name="armador" list="lista-armadores" placeholder="Armador" value="${n.armadorOrigem === 'tabela de armadores' ? esc(n.armador) : ''}" aria-label="Armador de ${esc(n.navio)}" required>
+              <select name="tipo" aria-label="Vale para"><option value="navio">todas as viagens deste navio</option><option value="viagem">só esta viagem</option></select>
+              <button class="botao pequeno" type="submit">Salvar</button>
+            </form></li>`).join('')}</ul>${lista.length > 40 ? `<button type="button" class="mais" id="armadores-todos">${armadoresTodos ? 'Mostrar menos' : `Mostrar os ${lista.length}`}</button>` : ''}`
+          : '<p class="suave">Todos os navios têm armador válido.</p>'}
+        <p class="erro-form" id="erro-armador" role="alert"></p>
+      </div>
+      <div>
+        <h3 style="margin-bottom:4px">Regras cadastradas</h3>
+        ${regras.length ? `<ul class="lista">${regras.map((r) => `<li><span><strong>${esc(r.valor)}</strong> <span class="sub">(${r.tipo === 'viagem' ? 'viagem' : 'navio'})</span><span class="seta">para</span><strong>${esc(r.armador)}</strong><br><span class="sub">${esc(r.autor)}, ${data(r.em)}</span></span><span class="direita"><button type="button" class="link-botao" data-apagar-regra="${esc(r.id)}">Remover</button></span></li>`).join('')}</ul>` : '<p class="suave">Nenhuma regra ainda. Cadastre ao lado: escolha "todas as viagens deste navio" quando o navio sempre é do mesmo armador.</p>'}
+      </div>
+    </div>`;
+}
+async function salvarArmador(form) {
+  const f = new FormData(form);
+  const autor = $('#nome-armadores').value;
+  guardar('nome', autor);
+  try {
+    await enviarJson('/api/armadores', 'POST', { tipo: f.get('tipo'), valor: f.get('tipo') === 'viagem' ? form.dataset.viagem : form.dataset.navio, armador: f.get('armador'), autor });
+    await carregarArmadores();
+    carregar();
+  } catch (e) {
+    $('#erro-armador').textContent = `Não foi possível salvar: ${e.message}`;
+  }
+}
+async function removerRegra(b) {
+  if (!b.dataset.confirmar) {
+    b.dataset.confirmar = '1';
+    b.textContent = 'Clique de novo para remover';
+    return;
+  }
+  await enviarJson(`/api/armadores?id=${encodeURIComponent(b.dataset.apagarRegra)}`, 'DELETE').catch((e) => alertaTexto(e));
+  await carregarArmadores();
+  carregar();
+}
+const alertaTexto = (e) => { $('#erro-armador').textContent = e.message; };
+
+// ============================================================ calendário (Outlook)
+function linkCalendario() {
+  const tipos = [...document.querySelectorAll('#cal-tipos input:checked')].map((i) => i.value);
+  const escopo = document.querySelector('input[name="cal-escopo"]:checked').value;
+  const q = new URLSearchParams({ tipos: tipos.join(',') || 'deadline' });
+  if (escopo === 'filtros') { const f = filtrosGlobais(); for (const k of ['terminal', 'armador']) if (f.get(k)) q.set(k, f.get(k)); }
+  if (escopo === 'meus') q.set('chaves', Object.keys(meus).join(','));
+  q.set('lembrete', $('#cal-lembrete').value);
+  return `${location.origin}/api/calendario.ics?${q}`;
+}
+function atualizarCalendario() {
+  const radioMeus = document.querySelector('input[name="cal-escopo"][value="meus"]');
+  radioMeus.disabled = !Object.keys(meus).length;
+  if (radioMeus.disabled && radioMeus.checked) document.querySelector('input[name="cal-escopo"][value="filtros"]').checked = true;
+  const l = linkCalendario();
+  $('#cal-link').value = l;
+  $('#cal-webcal').href = l.replace(/^https?:/, 'webcal:');
+  $('#cal-baixar').href = l;
+  $('#cal-aviso-meus').hidden = !radioMeus.checked;
+  $('#cal-copiar').textContent = 'Copiar link';
 }
 
 // ============================================================ dica (tooltip)
@@ -1129,7 +1568,7 @@ addEventListener('scroll', esconderDica, { passive: true });
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') esconderDica(); });
 
 // ============================================================ abas
-const ABAS = ['visao', 'navios', 'mudancas', 'qualidade'];
+const ABAS = ['visao', 'navios', 'mudancas', 'viagens', 'qualidade'];
 const abaAtual = () => (ABAS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'visao');
 function mostrarAba() {
   const aba = abaAtual();
@@ -1139,7 +1578,10 @@ function mostrarAba() {
     else l.removeAttribute('aria-current');
   }
   if (aba === 'mudancas' && !mudancas) carregarMudancas();
+  if (aba === 'mudancas' && !confiabilidade) carregarConfiabilidade();
+  if (aba === 'viagens') carregarViagens();
   if (aba === 'qualidade' && !qualidade) carregarQualidade();
+  if (aba === 'qualidade' && !armadoresDados) carregarArmadores();
   esconderDica();
 }
 addEventListener('hashchange', () => { mostrarAba(); scrollTo({ top: 0 }); });
@@ -1166,6 +1608,8 @@ function aoMudarFiltros() {
   guardar('filtros', { terminal: f.get('terminal'), dias: f.get('dias') });
   carregar();
   if (mudancas) mostrarMudancas();
+  if (armadoresDados) mostrarArmadores();
+  if (confiabilidade && $('#c-agrupar').value === 'armador') carregarConfiabilidade();
 }
 $('#limpar').addEventListener('click', () => {
   $('#filtros').reset();
@@ -1175,13 +1619,37 @@ $('#limpar').addEventListener('click', () => {
   aoMudarFiltros();
 });
 $('#atualizar').addEventListener('click', () => carregar(true));
-for (const id of ['#f-situacao', '#f-gate', '#f-ordenar', '#f-encerrados']) $(id).addEventListener('change', () => mostrarNavios());
+for (const id of ['#f-situacao', '#f-gate', '#f-ordenar', '#f-encerrados', '#f-meus']) $(id).addEventListener('change', () => mostrarNavios());
+for (const id of ['#c-campo', '#c-agrupar', '#c-dias']) $(id).addEventListener('change', () => carregarConfiabilidade());
+for (const id of ['#v-de', '#v-ate', '#v-todas']) $(id).addEventListener('change', () => carregarViagens());
+$('#nome-armadores').addEventListener('change', (ev) => guardar('nome', ev.target.value));
+document.addEventListener('submit', (ev) => {
+  if (ev.target.id === 'form-obs') { ev.preventDefault(); salvarObservacao(ev.target); }
+  else if (ev.target.classList.contains('form-armador')) { ev.preventDefault(); salvarArmador(ev.target); }
+});
+$('#calendario').addEventListener('change', atualizarCalendario);
+$('#calendario').addEventListener('click', (ev) => { if (ev.target === $('#calendario')) $('#calendario').close(); });
 for (const id of ['#m-periodo', '#m-campo']) $(id).addEventListener('change', () => mostrarMudancas());
 $('#metrica').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (!b) return; metrica = b.dataset.metrica; guardar('metrica', metrica); mostrarPorDia(); });
 $('#vista').addEventListener('click', (ev) => { const b = ev.target.closest('button'); if (!b) return; vista = b.dataset.vista; guardar('vista', vista); mostrarNavios(); });
 document.addEventListener('click', (ev) => {
+  const meu = ev.target.closest('[data-meu]');
+  if (meu) return alternarMeu(meu);
   const navio = ev.target.closest('[data-chave]');
   if (navio) return abrirDetalhe(navio.dataset.chave);
+  const apagarObs = ev.target.closest('[data-apagar-obs]');
+  if (apagarObs) return apagarObservacao(apagarObs);
+  const apagarRegra = ev.target.closest('[data-apagar-regra]');
+  if (apagarRegra) return removerRegra(apagarRegra);
+  if (ev.target.closest('[data-abrir="calendario"]')) { atualizarCalendario(); $('#calendario').showModal(); return; }
+  const fechar = ev.target.closest('[data-fechar]');
+  if (fechar) { fechar.closest('dialog').close(); return; }
+  if (ev.target.id === 'armadores-todos') { armadoresTodos = !armadoresTodos; mostrarArmadores(); return; }
+  if (ev.target.id === 'cal-copiar') {
+    const l = $('#cal-link');
+    (navigator.clipboard?.writeText(l.value) || Promise.reject()).then(() => (ev.target.textContent = 'Link copiado'), () => { l.select(); document.execCommand('copy'); ev.target.textContent = 'Link copiado'; });
+    return;
+  }
   const acao = ev.target.closest('[data-acao]');
   if (acao) {
     ev.preventDefault();
