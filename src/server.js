@@ -40,7 +40,7 @@ const env = process.env;
 const config = {
   porta: Number(env.PORT) || 3000,
   dssUrl: [env.DSS_URL, env.NAVIOS_OF_DSS].map((v) => String(v || '').trim()).find((v) => /^https?:\/\//i.test(v)) || '',
-  cacheSegundos: Number(env.CACHE_SEGUNDOS) || 60,
+  cacheSegundos: Number(env.CACHE_SEGUNDOS) || 600, // consulta ao DSS a cada 10 min
   // Render define RENDER_EXTERNAL_URL; o ping a cada 10 min evita a hibernação do plano gratuito (15 min sem acesso).
   urlPublica: env.URL_PUBLICA || env.RENDER_EXTERNAL_URL || '',
   manterAcordado: env.MANTER_ACORDADO !== 'false',
@@ -242,7 +242,7 @@ function criarServidor(cliente = criarClientePadrao(), historico = criarMemoria(
         .map(comRotulo);
       const a = alertas?.estado();
       const resumoAlertas = a?.ativo ? { para: a.para, ultimoEnvio: a.ultimoEnvio?.em || null, erro: a.ultimoErro?.mensagem || null } : null;
-      return { ...l, historico: historico.tipo, etracking: Boolean(etracking), alertas: resumoAlertas, mudancas, resumo: resumir(filtrar(r.registros, q), { horas: horasResumo(q) }) };
+      return { ...l, intervaloSegundos: config.cacheSegundos, historico: historico.tipo, etracking: Boolean(etracking), alertas: resumoAlertas, mudancas, resumo: resumir(filtrar(r.registros, q), { horas: horasResumo(q) }) };
     },
     // Histórico: ?horas=24 (ou desde=ISO) &terminal= &navio= &campo= &chave= &limite=
     '/api/mudancas': async (q) => {

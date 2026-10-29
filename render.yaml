@@ -20,4 +20,4 @@ services:
       - key: DSS_SENHA
         sync: false
       - key: CACHE_SEGUNDOS
-        value: "60"
+        value: "600"

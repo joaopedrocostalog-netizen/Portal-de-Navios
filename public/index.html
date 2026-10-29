@@ -922,7 +922,9 @@ function mostrarEstado() {
   const al = dados.alertas;
   const luz = al ? (al.erro ? 'falha' : 'ok') : '';
   const textoAl = al ? (al.erro ? 'Alertas por e-mail com falha' : 'Alertas por e-mail ligados') : 'Alertas por e-mail desligados';
-  $('#estado').innerHTML = `<span>DSS consultado às <strong>${hora(dados.consultadoEm)}</strong>${idade > 5 * 60e3 ? ` (há ${duracao(idade)})` : ''}</span>
+  const intervalo = (dados.intervaloSegundos || 600) * 1000;
+  const proxima = ms(dados.consultadoEm) + intervalo;
+  $('#estado').innerHTML = `<span data-dica="O portal busca dados novos no DSS a cada ${Math.round(intervalo / 60000)} minutos e a tela se atualiza sozinha." tabindex="0">DSS consultado às <strong>${hora(dados.consultadoEm)}</strong>${idade > intervalo + 5 * 60e3 ? ` (há ${duracao(idade)})` : `, próxima às ${hora(new Date(Math.max(proxima, Date.now())).toISOString())}`}</span>
     <span><strong>${dados.qtdRegistrosDss}</strong> atracações recebidas</span>
     <span data-dica="${esc(al?.erro || (al ? `Para ${al.para.join(', ')}` : 'Defina RESEND_API_KEY e ALERTA_PARA no Render.'))}" tabindex="0"><i class="luz ${luz}" aria-hidden="true"></i>${textoAl}</span>`;
   $('#alertas').textContent = al ? `${textoAl}${al.ultimoEnvio ? `, último envio em ${data(al.ultimoEnvio)}` : ''}${al.erro ? `: ${al.erro}` : ''}.` : `${textoAl}.`;
@@ -1787,7 +1789,8 @@ $('#detalhe').addEventListener('click', (ev) => { if (ev.target === $('#detalhe'
 })();
 mostrarAba();
 carregar();
-setInterval(() => carregar(), 2 * 60 * 1000);
+setInterval(() => { if (!document.hidden) carregar(); }, 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && dados && Date.now() - ms(dados.consultadoEm) > 60 * 1000) carregar(); });
 setInterval(() => { if (dados && abaAtual() === 'visao' && !document.hidden) { mostrarProximo(); mostrarFaixa(); } }, 30 * 1000);
 </script>
 </body>

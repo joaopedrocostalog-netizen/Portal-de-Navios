@@ -112,7 +112,7 @@ Também ficam registrados os navios que entram na lista do DSS, saem dela ou vol
 - **Viagens passadas:** a aba lista os navios encerrados ou que saíram da lista do DSS, com atracação real, última saída prevista, quando saíram da lista e quantas datas mudaram. O DSS não informa a saída real. O banco guarda as viagens desde 27/10/2026 (`navios_estado`, com `primeiro_em` e `removido_em`).
 - **Confiabilidade das previsões** (aba Mudanças, e `GET /api/confiabilidade?campo=data_prev_chegada&agrupar=terminal&dias=30`): para cada navio, quanto a chegada, o deadline ou a saída andou da primeira à última versão no período. A barra mostra a média entre os navios em que a data mudou, por terminal ou por armador, junto com quantos mudaram. Fica mais confiável com algumas semanas de histórico.
 - **Deadlines no Outlook:** o botão "Adicionar ao Outlook" gera um link de calendário (`/api/calendario.ics`) com deadlines e aberturas de gate (e, se quiser, chegadas e atracações), dos filtros atuais, só dos meus navios ou de todos, com lembrete antes do deadline. No Outlook: Calendário > Adicionar calendário > Assinar da Web. O Outlook atualiza sozinho.
-- **Modo TV** (`/tv`, aceita `?terminal=btp`): tela cheia escura com relógio, próximos deadlines em contagem regressiva, chegadas de hoje e amanhã, gates abrindo e navios aguardando atracação. Atualiza a cada minuto e recarrega uma vez por dia.
+- **Modo TV** (`/tv`, aceita `?terminal=btp`): tela cheia escura com relógio, próximos deadlines em contagem regressiva, chegadas de hoje e amanhã, gates abrindo e navios aguardando atracação. Mostra os dados novos logo depois de cada busca no DSS (a cada 10 min) e recarrega uma vez por dia.
 - **Agenda para imprimir** (`/imprimir?dia=0|1|2&terminal=`): a agenda do dia em A4 paisagem, com observações da equipe e uma coluna para marcar o que foi feito. "Imprimir ou salvar em PDF" usa a impressão do navegador.
 - **Tabela de armadores** (aba Qualidade dos dados): para os navios em que o DSS não traz armador válido, cadastre "este navio" (vale para todas as viagens, inclusive futuras) ou "só esta viagem". A viagem tem prioridade sobre o navio, e o armador do DSS, quando vier certo, sempre vence. Fica no banco (`armadores_mapa`).
 
@@ -163,7 +163,7 @@ O plano gratuito do Render bloqueia SMTP (portas 25, 465 e 587), então o envio 
 
 ## Desempenho
 
-- **Atualização em segundo plano:** o servidor consulta o DSS a cada `CACHE_SEGUNDOS` (60 s) e já guarda o resultado normalizado. As páginas nunca esperam pelo DSS. Se ele falhar, o painel mostra a última resposta válida com um aviso.
+- **Atualização em segundo plano:** o servidor consulta o DSS a cada `CACHE_SEGUNDOS` (600 s = 10 min) e já guarda o resultado normalizado. As páginas nunca esperam pelo DSS. Se ele falhar, o painel mostra a última resposta válida com um aviso.
 - **Compressão gzip** em todas as respostas acima de 1 KB, e **ETag**: quando nada mudou, o navegador recebe `304` sem corpo.
 - **Uma chamada por carga de página** (`/api/painel`).
 - **Janela padrão de 7 dias sem encerrados**, em vez de todas as atracações.
@@ -192,7 +192,7 @@ Exemplo de item de `/api/navios`:
 | `DSS_URL` | `https://costalog.dssinformatica.com.br/wsdss/navios/listarNavios` |
 | `DSS_USUARIO`, `DSS_SENHA` | Usuário de integração do DSS |
 | `DSS_TOKEN` | Só se o DSS autenticar por token em vez de usuário e senha |
-| `CACHE_SEGUNDOS` | Intervalo da consulta ao DSS em segundo plano (60 s) |
+| `CACHE_SEGUNDOS` | Intervalo da consulta ao DSS em segundo plano (600 s = 10 min). A tela confere a cada minuto e mostra os dados novos logo depois da busca |
 | `MANTER_ACORDADO` | `false` desliga o ping contra a hibernação |
 | `PING_MINUTOS` | Intervalo do ping (10 min; tem de ser menor que os 15 min do Render) |
 | `DATABASE_URL` | PostgreSQL do histórico de mudanças (no Render: *Internal Database URL* do `portal-de-navios-db`) |

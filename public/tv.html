@@ -68,7 +68,7 @@
       <section><h2>Aguardando atracação <small id="n-ag"></small></h2><ul class="curta" id="aguardando"></ul></section>
     </div>
   </main>
-  <footer><span id="estado">Carregando os dados do DSS…</span><span>Atualiza sozinho a cada minuto.</span></footer>
+  <footer><span id="estado">Carregando os dados do DSS…</span><span id="intervalo">Dados do DSS atualizados a cada 10 minutos.</span></footer>
 </div>
 <button type="button" id="tela-cheia">Tela cheia</button>
 <script>
@@ -143,7 +143,8 @@ function desenhar() {
   const idade = agora - ms(dados.consultadoEm);
   $('#estado').innerHTML = idade > 10 * 60e3
     ? `<span class="alerta">Atenção: os dados do DSS são de ${fHora.format(new Date(dados.consultadoEm))} (há ${Math.round(idade / 60e3)} min).</span>`
-    : `DSS consultado às ${fHora.format(new Date(dados.consultadoEm))}.`;
+    : `DSS consultado às ${fHora.format(new Date(dados.consultadoEm))}, próxima às ${fHora.format(new Date(Math.max(ms(dados.consultadoEm) + (dados.intervaloSegundos || 600) * 1000, agora)))}.`;
+  $('#intervalo').textContent = `Dados do DSS atualizados a cada ${Math.round((dados.intervaloSegundos || 600) / 60)} minutos.`;
 }
 
 function relogio() {
