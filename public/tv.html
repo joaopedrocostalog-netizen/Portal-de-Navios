@@ -119,7 +119,7 @@ function desenhar() {
   $('#n-dl').textContent = `${dls.filter((n) => ms(n.datas.deadline) - agora <= 24 * HORA).length} nas próximas 24 h`;
   lista('#deadlines', dls, (n) => {
     const d = ms(n.datas.deadline) - agora;
-    return `<li><span class="falta ${d < 2 * HORA ? 'critico' : d < 6 * HORA ? 'urgente' : ''}">${falta(d)}</span><span><div class="navio">${esc(n.navio)}</div><div class="sub">viagem ${esc(n.viagem)}, ${quando(n.datas.deadline)}${n.situacao.gate === 'aguardando' ? ', gate ainda fechado' : ''}</div></span>${term(n.terminal)}</li>`;
+    return `<li><span class="falta ${d < 2 * HORA ? 'critico' : d < 6 * HORA ? 'urgente' : ''}">${falta(d)}</span><span><div class="navio">${esc(n.navio)}</div><div class="sub">Viagem ${esc(n.viagem)}, ${quando(n.datas.deadline)}${n.situacao.gate === 'aguardando' ? ', gate ainda fechado' : ''}</div></span>${term(n.terminal)}</li>`;
   }, 8, 'Nenhum deadline à frente.');
 
   const fimAmanha = meiaNoite(agora) + 2 * 24 * HORA;
@@ -134,7 +134,7 @@ function desenhar() {
   }
   gates.sort((a, b) => ms(a.em) - ms(b.em));
   $('#n-gt').textContent = gates.length || '';
-  lista('#gates', gates, (g) => `<li><span class="hora">${quando(g.em)}</span><span class="navio">${esc(g.n.navio)} <span class="sub">${g.tipo}</span></span>${term(g.n.terminal)}</li>`, 5, 'Nenhum gate abrindo.');
+  lista('#gates', gates, (g) => `<li><span class="hora">${quando(g.em)}</span><span class="navio">${esc(g.n.navio)} <span class="sub">${g.tipo === 'dry' ? 'Dry' : 'Reefer'}</span></span>${term(g.n.terminal)}</li>`, 5, 'Nenhum gate abrindo.');
 
   const ag = at.filter((n) => n.situacao.navio === 'aguardando_atracacao').sort((a, b) => (b.horas.esperaAtracacao || 0) - (a.horas.esperaAtracacao || 0));
   $('#n-ag').textContent = ag.length || '';
